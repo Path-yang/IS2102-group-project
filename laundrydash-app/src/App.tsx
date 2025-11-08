@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 import './App.css';
-import CustomerPlaceholder from './pages/CustomerPlaceholder';
+import CustomerApp from './pages/CustomerApp';
 import DriverApp from './pages/DriverApp';
 import Home from './pages/Home';
 
@@ -9,7 +9,7 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/driver" element={<DriverApp />} />
-      <Route path="/customer" element={<CustomerPlaceholder />} />
+      <Route path="/customer" element={<CustomerApp />} />
     </Routes>
   );
 };

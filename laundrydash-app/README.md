@@ -4,9 +4,28 @@ React + TypeScript + Vite app that powers the LaundryDash landing page selector 
 
 ## Available experiences
 
-- `/` – role selection home. Choose Customer (placeholder for now) or Driver.
-- `/driver` – fully designed driver cockpit with online toggle, job intake, route timeline, proof-of-service actions, performance dashboard, and surge alerts tailored to the PDF requirements.
-- `/customer` – blank scaffold to be expanded in the next sprint.
+- `/` – role selection home. Choose Customer or Driver experience.
+- `/driver` – fully designed driver cockpit with online toggle, job intake, route timeline, proof-of-service actions, performance dashboard, and surge alerts.
+- `/customer` – complete customer mobile app with service selection, scheduling, order tracking, and profile management.
+
+## Customer App Features
+
+The customer experience includes:
+
+- **Home Tab**: Browse and select laundry services (Wash & Fold, Dry Clean, Premium Care, Express)
+- **Schedule Pickup**: Set address, date, time, and special instructions
+- **Track Order**: Real-time order status with 6-stage progress timeline, driver info, and live map
+- **Order History**: View past orders with re-order capability
+- **Profile**: Manage saved addresses, payment methods, and preferences
+
+## Driver App Features
+
+The driver experience includes:
+
+- **Active Jobs**: Multi-job management with 7-stage workflow progression
+- **New Requests**: Accept/reject incoming jobs with countdown timer
+- **Job Board**: Overview of all active, queued, and completed jobs
+- **Dashboard**: Earnings tracking, performance metrics, and surge alerts
 
 ## Getting started
 

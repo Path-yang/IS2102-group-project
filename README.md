@@ -15,8 +15,9 @@ npm run dev
 
 Visit `http://localhost:5173`:
 
-- Landing page lets you choose Customer (placeholder) or Driver.
-- Driver experience is optimized for mobile portrait width and covers job intake, routing, proof-of-pickup/delivery, communication shortcuts, earnings dashboard, and surge alerts as outlined in the driver PDFs.
+- Landing page lets you choose Customer or Driver experience.
+- **Customer App** - Full-featured mobile app for laundry ordering with service selection, pickup scheduling, order tracking, and order history.
+- **Driver App** - Optimized for mobile portrait width and covers job intake, routing, proof-of-pickup/delivery, communication shortcuts, earnings dashboard, and surge alerts.
 
 Use `npm run build` before deploying to Vercel to ensure the bundle is production-ready.
 

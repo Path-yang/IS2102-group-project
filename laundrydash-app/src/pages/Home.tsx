@@ -11,19 +11,23 @@ const Home = () => {
           on.
         </p>
         <div className="home-actions">
-          <Link to="/customer" className="home-pill secondary">
-            Customer App (coming soon)
+          <Link to="/customer" className="home-pill primary">
+            Customer App
           </Link>
           <Link to="/driver" className="home-pill primary">
-            Driver App Prototype
+            Driver App
           </Link>
         </div>
       </div>
       <section className="experience-grid">
-        <Link to="/customer" className="experience-card disabled">
+        <Link to="/customer" className="experience-card">
           <p className="eyebrow">Customer</p>
           <h2>On-demand laundry ordering</h2>
-          <p>Placeholder screen for now. Design work pending future sprint.</p>
+          <ul>
+            <li>Browse & select services</li>
+            <li>Schedule pickup & delivery</li>
+            <li>Track orders in real-time</li>
+          </ul>
         </Link>
         <Link to="/driver" className="experience-card">
           <p className="eyebrow">Driver</p>
