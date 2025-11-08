@@ -396,6 +396,22 @@ main {
   color: #475467;
 }
 
+.next-action {
+  margin: 0.4rem 0 0.6rem;
+}
+
+.next-action button {
+  width: 100%;
+  border-radius: 1rem;
+}
+
+.next-action p {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #475467;
+  margin: 0.35rem 0 0;
+}
+
 .route-card {
   border: 1px dashed #c7d7fe;
   border-radius: 1rem;
@@ -440,6 +456,18 @@ main {
 .map-actions {
   display: flex;
   gap: 0.75rem;
+}
+
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.contact-actions button {
+  flex: 1 1 calc(50% - 0.5rem);
+  min-width: 140px;
 }
 
 .map-modal {

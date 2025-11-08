@@ -37,6 +37,16 @@ const statusFlow: Array<{ key: StatusKey; label: string; detail: string }> = [
   { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
 ];
 
+const nextActionCopy: Record<StatusKey, string> = {
+  accepted: 'Accept job',
+  enRoutePickup: 'Start pickup route',
+  pickedUp: 'Confirm pickup',
+  atPartner: 'Drop at partner',
+  returning: 'Return to customer',
+  delivered: 'Confirm delivery',
+  completed: 'Complete job',
+};
+
 const initialActiveJob: Job = {
   id: 'LD-2381',
   customer: 'Clara Tan',
@@ -376,6 +386,12 @@ const DriverApp = () => {
                 const jobStatus = statusFlow[jobStageIndex];
                 const isExpanded = expandedJobIds.includes(job.id);
                 const isCurrentAdvanceDisabled = jobStageIndex >= statusFlow.length - 1;
+                const nextStageKey = isCurrentAdvanceDisabled
+                  ? 'completed'
+                  : statusFlow[jobStageIndex + 1].key;
+                const nextStepLabel = isCurrentAdvanceDisabled
+                  ? 'All steps done'
+                  : nextActionCopy[nextStageKey] ?? 'Advance job';
 
                 return (
                   <div key={job.id} className="collapsible-section">
@@ -439,6 +455,17 @@ const DriverApp = () => {
                             </div>
                           ))}
                         </div>
+                        <div className="next-action">
+                          <button
+                            type="button"
+                            className="primary-action"
+                            onClick={() => handleAdvanceStatusForJob(job.id)}
+                            disabled={isCurrentAdvanceDisabled}
+                          >
+                            {nextStepLabel}
+                          </button>
+                          <p>Drivers see the next required step here.</p>
+                        </div>
 
                         <div className="route-card tight">
                           <p className="eyebrow">Route overview</p>
@@ -469,18 +496,7 @@ const DriverApp = () => {
                           </div>
                         </div>
 
-                        <div className="action-row">
-                          <button 
-                            type="button" 
-                            className="primary-action" 
-                            onClick={() => handleAdvanceStatusForJob(job.id)} 
-                            disabled={isCurrentAdvanceDisabled}
-                          >
-                            {isCurrentAdvanceDisabled ? 'Job completed' : 'Advance to next step'}
-                          </button>
-                          <button type="button" className="ghost">
-                            Confirm pickup
-                          </button>
+                        <div className="contact-actions">
                           <button type="button" className="ghost">
                             Contact customer
                           </button>
