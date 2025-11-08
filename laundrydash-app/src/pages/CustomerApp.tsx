@@ -147,6 +147,13 @@ const CustomerApp = () => {
   const [activeOrder] = useState<Order | null>(activeOrderSeed);
   const [orderHistory] = useState<Order[]>(orderHistorySeed);
 
+  // Carousel state
+  const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
+
+  // Collapsible states
+  const [pickupSlotsOpen, setPickupSlotsOpen] = useState(false);
+  const [deliverySlotsOpen, setDeliverySlotsOpen] = useState(false);
+
   // Order form state
   const [pickupAddress, setPickupAddress] = useState('123 Orchard Road, #05-67, 238858');
   const [itemCount, setItemCount] = useState(5);
@@ -350,24 +357,51 @@ const CustomerApp = () => {
                 <p>Select a laundry service to get started</p>
               </div>
 
-              <div className="services-grid">
-                {services.map((service) => (
+              <div className="service-carousel">
+                <button
+                  type="button"
+                  className="carousel-btn"
+                  onClick={() => setCurrentServiceIndex((prev) => (prev === 0 ? services.length - 1 : prev - 1))}
+                >
+                  ◀
+                </button>
+                
+                <div className="carousel-content">
                   <div
-                    key={service.id}
-                    className="service-card"
-                    onClick={() => handleServiceSelect(service)}
+                    className="service-card carousel-card"
+                    onClick={() => handleServiceSelect(services[currentServiceIndex])}
                   >
-                    <div className="service-icon">{service.icon}</div>
-                    <h3>{service.name}</h3>
-                    <p className="service-desc">{service.description}</p>
+                    <div className="service-icon">{services[currentServiceIndex].icon}</div>
+                    <h3>{services[currentServiceIndex].name}</h3>
+                    <p className="service-desc">{services[currentServiceIndex].description}</p>
                     <div className="service-meta">
                       <span className="service-price">
-                        ${service.price.toFixed(2)}/{service.priceType === 'per-kg' ? 'kg' : 'item'}
+                        ${services[currentServiceIndex].price.toFixed(2)}/{services[currentServiceIndex].priceType === 'per-kg' ? 'kg' : 'item'}
                       </span>
-                      <span className="service-duration">{service.duration}</span>
+                      <span className="service-duration">{services[currentServiceIndex].duration}</span>
                     </div>
                   </div>
-                ))}
+                  
+                  <div className="carousel-dots">
+                    {services.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`carousel-dot ${index === currentServiceIndex ? 'active' : ''}`}
+                        onClick={() => setCurrentServiceIndex(index)}
+                        aria-label={`Go to service ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="carousel-btn"
+                  onClick={() => setCurrentServiceIndex((prev) => (prev === services.length - 1 ? 0 : prev + 1))}
+                >
+                  ▶
+                </button>
               </div>
 
               {activeOrder && (
@@ -437,38 +471,100 @@ const CustomerApp = () => {
               </div>
 
               <div className="form-field">
-                <label>Pickup Time Slot</label>
-                <div className="time-slots">
-                  {pickupSlots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      className={`time-slot ${!slot.available ? 'unavailable' : ''} ${selectedPickupSlot === slot.id ? 'selected' : ''}`}
-                      onClick={() => slot.available && setSelectedPickupSlot(slot.id)}
-                      disabled={!slot.available}
-                    >
-                      {slot.time}
-                      {!slot.available && <span className="unavailable-badge">Full</span>}
-                    </button>
-                  ))}
+                <div className="collapsible-section">
+                  <button
+                    type="button"
+                    className="collapsible-header"
+                    onClick={() => setPickupSlotsOpen(!pickupSlotsOpen)}
+                  >
+                    <div className="collapsible-header-content">
+                      <div>
+                        <h3 className="collapsible-title">Pickup Time Slot</h3>
+                        {selectedPickupSlot && (
+                          <p className="collapsible-subtitle">
+                            {pickupSlots.find(s => s.id === selectedPickupSlot)?.time}
+                          </p>
+                        )}
+                      </div>
+                      <div className="collapsible-indicator">
+                        {selectedPickupSlot && <span className="pill">Selected</span>}
+                        <span className="chevron">{pickupSlotsOpen ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  {pickupSlotsOpen && (
+                    <div className="collapsible-content">
+                      <div className="time-slots">
+                        {pickupSlots.map((slot) => (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            className={`time-slot ${!slot.available ? 'unavailable' : ''} ${selectedPickupSlot === slot.id ? 'selected' : ''}`}
+                            onClick={() => {
+                              if (slot.available) {
+                                setSelectedPickupSlot(slot.id);
+                                setPickupSlotsOpen(false);
+                              }
+                            }}
+                            disabled={!slot.available}
+                          >
+                            {slot.time}
+                            {!slot.available && <span className="unavailable-badge">Full</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="form-field">
-                <label>Delivery Time Slot</label>
-                <div className="time-slots">
-                  {deliverySlots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      className={`time-slot ${!slot.available ? 'unavailable' : ''} ${selectedDeliverySlot === slot.id ? 'selected' : ''}`}
-                      onClick={() => slot.available && setSelectedDeliverySlot(slot.id)}
-                      disabled={!slot.available}
-                    >
-                      {slot.time}
-                      {!slot.available && <span className="unavailable-badge">Full</span>}
-                    </button>
-                  ))}
+                <div className="collapsible-section">
+                  <button
+                    type="button"
+                    className="collapsible-header"
+                    onClick={() => setDeliverySlotsOpen(!deliverySlotsOpen)}
+                  >
+                    <div className="collapsible-header-content">
+                      <div>
+                        <h3 className="collapsible-title">Delivery Time Slot</h3>
+                        {selectedDeliverySlot && (
+                          <p className="collapsible-subtitle">
+                            {deliverySlots.find(s => s.id === selectedDeliverySlot)?.time}
+                          </p>
+                        )}
+                      </div>
+                      <div className="collapsible-indicator">
+                        {selectedDeliverySlot && <span className="pill">Selected</span>}
+                        <span className="chevron">{deliverySlotsOpen ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  {deliverySlotsOpen && (
+                    <div className="collapsible-content">
+                      <div className="time-slots">
+                        {deliverySlots.map((slot) => (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            className={`time-slot ${!slot.available ? 'unavailable' : ''} ${selectedDeliverySlot === slot.id ? 'selected' : ''}`}
+                            onClick={() => {
+                              if (slot.available) {
+                                setSelectedDeliverySlot(slot.id);
+                                setDeliverySlotsOpen(false);
+                              }
+                            }}
+                            disabled={!slot.available}
+                          >
+                            {slot.time}
+                            {!slot.available && <span className="unavailable-badge">Full</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
