@@ -149,7 +149,6 @@ const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('active');
   const [activeJobs, setActiveJobs] = useState<Job[]>(seededActiveJobs);
-  const [activeIndex, setActiveIndex] = useState(0);
   const [jobStatusMap, setJobStatusMap] = useState<Record<string, number>>(() =>
     seededActiveJobs.reduce((acc, job) => ({ ...acc, [job.id]: 1 }), {})
   );
@@ -173,12 +172,8 @@ const DriverApp = () => {
   ]);
   const [completedJobs, setCompletedJobs] = useState<Job[]>(completedSeed);
   const [requestTimer, setRequestTimer] = useState(30);
-  const [isActiveJobsExpanded, setIsActiveJobsExpanded] = useState(false);
+  const [expandedJobIds, setExpandedJobIds] = useState<string[]>([]);
 
-  const activeJob = activeJobs[activeIndex] ?? null;
-  const activeJobStageIndex = activeJob ? jobStatusMap[activeJob.id] ?? 0 : 0;
-  const activeJobStatus = statusFlow[activeJobStageIndex];
-  const isAdvanceDisabled = !activeJob || activeJobStageIndex >= statusFlow.length - 1;
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'active', label: 'Active jobs' },
     { key: 'requests', label: 'New requests' },
@@ -196,37 +191,41 @@ const DriverApp = () => {
     return () => clearInterval(interval);
   }, [incomingRequest, requestTimer]);
 
-  const handleAdvanceStatus = () => {
-    if (!activeJob) return;
+  const toggleJobExpansion = (jobId: string) => {
+    setExpandedJobIds((prev) => {
+      if (prev.includes(jobId)) {
+        return prev.filter((id) => id !== jobId);
+      }
+      return [...prev, jobId];
+    });
+  };
+
+  const handleAdvanceStatusForJob = (jobId: string) => {
     setJobStatusMap((prev) => {
-      const currentStage = prev[activeJob.id] ?? 0;
+      const currentStage = prev[jobId] ?? 0;
       if (currentStage >= statusFlow.length - 1) {
         return prev;
       }
       const nextIndex = currentStage + 1;
-      const updated = { ...prev, [activeJob.id]: nextIndex };
+      const updated = { ...prev, [jobId]: nextIndex };
       const nextStatus = statusFlow[nextIndex];
 
       if (nextStatus.key === 'completed') {
-        setCompletedJobs((prevCompleted) => [
-          {
-            ...activeJob,
-            status: 'Completed',
-            eta: 'Completed just now',
-          },
-          ...prevCompleted,
-        ]);
-        setActiveJobs((prevJobs) => {
-          const filtered = prevJobs.filter((job) => job.id !== activeJob.id);
-          setActiveIndex((current) => {
-            if (filtered.length === 0) {
-              return 0;
-            }
-            return Math.min(current, filtered.length - 1);
+        const completingJob = activeJobs.find((job) => job.id === jobId);
+        if (completingJob) {
+          setCompletedJobs((prevCompleted) => [
+            {
+              ...completingJob,
+              status: 'Completed',
+              eta: 'Completed just now',
+            },
+            ...prevCompleted,
+          ]);
+          setActiveJobs((prevJobs) => {
+            return prevJobs.filter((job) => job.id !== jobId);
           });
-          return filtered;
-        });
-        const { [activeJob.id]: _removed, ...rest } = updated;
+        }
+        const { [jobId]: _removed, ...rest } = updated;
         return rest;
       }
 
@@ -236,11 +235,7 @@ const DriverApp = () => {
 
   const handleAcceptRequest = () => {
     if (!incomingRequest) return;
-    setActiveJobs((prev) => {
-      const nextJobs = [...prev, { ...incomingRequest, status: 'In Progress' }];
-      setActiveIndex(nextJobs.length - 1);
-      return nextJobs;
-    });
+    setActiveJobs((prev) => [...prev, { ...incomingRequest, status: 'In Progress' }]);
     setJobStatusMap((prev) => ({ ...prev, [incomingRequest.id]: 0 }));
     const [next, ...rest] = requestQueue;
     setIncomingRequest(next ?? null);
@@ -373,145 +368,134 @@ const DriverApp = () => {
 
       {activeTab === 'active' && (
         <section className="panel">
-          {activeJob ? (
+          {activeJobs.length > 0 ? (
             <>
-              {/* Collapsible Active Jobs Section */}
-              <div className="collapsible-section">
-                <button
-                  type="button"
-                  className="collapsible-header"
-                  onClick={() => setIsActiveJobsExpanded(!isActiveJobsExpanded)}
-                  aria-expanded={isActiveJobsExpanded}
-                >
-                  <div className="collapsible-header-content">
-                    <div>
-                      <h3 className="collapsible-title">Active Jobs ({activeJobs.length})</h3>
-                      <p className="collapsible-subtitle">
-                        {activeJob.id} · {activeJob.customer} · ${activeJob.payout.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="collapsible-indicator">
-                      <span className="pill">{activeJobStatus.label}</span>
-                      <span className="chevron">{isActiveJobsExpanded ? '▼' : '▶'}</span>
-                    </div>
-                  </div>
-                </button>
+              {/* Individual Collapsible Cards for Each Active Job */}
+              {activeJobs.map((job) => {
+                const jobStageIndex = jobStatusMap[job.id] ?? 0;
+                const jobStatus = statusFlow[jobStageIndex];
+                const isExpanded = expandedJobIds.includes(job.id);
+                const isCurrentAdvanceDisabled = jobStageIndex >= statusFlow.length - 1;
 
-                {isActiveJobsExpanded && (
-                  <div className="collapsible-content">
-                    {activeJobs.length > 1 && (
-                      <div className="job-carousel">
-                        <button
-                          type="button"
-                          className="carousel-btn"
-                          onClick={() => setActiveIndex((prev) => Math.max(prev - 1, 0))}
-                          disabled={activeIndex === 0}
-                          aria-label="Previous active job"
-                        >
-                          ‹
-                        </button>
-                        <p>
-                          Job {activeIndex + 1} of {activeJobs.length}
-                        </p>
-                        <button
-                          type="button"
-                          className="carousel-btn"
-                          onClick={() =>
-                            setActiveIndex((prev) => Math.min(prev + 1, activeJobs.length - 1))
-                          }
-                          disabled={activeIndex === activeJobs.length - 1}
-                          aria-label="Next active job"
-                        >
-                          ›
-                        </button>
+                return (
+                  <div key={job.id} className="collapsible-section">
+                    <button
+                      type="button"
+                      className="collapsible-header"
+                      onClick={() => toggleJobExpansion(job.id)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="collapsible-header-content">
+                        <div>
+                          <h3 className="collapsible-title">
+                            {job.id} · {job.customer}
+                          </h3>
+                          <p className="collapsible-subtitle">
+                            {job.bags} bags · ${job.payout.toFixed(2)} · {job.distance} km
+                          </p>
+                        </div>
+                        <div className="collapsible-indicator">
+                          <span className="pill">{jobStatus.label}</span>
+                          <span className="chevron">{isExpanded ? '▼' : '▶'}</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="collapsible-content">
+                        <div className="job-card">
+                          <div className="job-top">
+                            <div>
+                              <p className="eyebrow">Active job</p>
+                              <h3>{job.id}</h3>
+                            </div>
+                            <span className="pill">{jobStatus.label}</span>
+                          </div>
+                          <p className="customer-line">
+                            {job.customer} · {job.bags} bags
+                          </p>
+                          <p className="label">Pickup</p>
+                          <p>{job.pickup}</p>
+                          <p className="label">Laundry Partner</p>
+                          <p>{job.partner}</p>
+                          <p className="label">Drop-off</p>
+                          <p>{job.dropoff}</p>
+                          <div className="badge-row compact">
+                            <span>{job.service}</span>
+                            <span>{job.eta}</span>
+                            <span>${job.payout.toFixed(2)}</span>
+                          </div>
+                          {job.notes && <p className="note">Note: {job.notes}</p>}
+                        </div>
+
+                        <div className="timeline compact">
+                          {statusFlow.map((status, statusIndex) => (
+                            <div key={status.key} className="timeline-item compact">
+                              <div className={statusIndex <= jobStageIndex ? 'dot active' : 'dot'} />
+                              <div>
+                                <p className="timeline-title">{status.label}</p>
+                                <p className="timeline-detail">{status.detail}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="route-card tight">
+                          <p className="eyebrow">Route overview</p>
+                          <div className="route-stops">
+                            {buildRouteStops(job).map((stop) => (
+                              <div key={stop.label} className="route-stop">
+                                <p className="label">{stop.label}</p>
+                                <p>{stop.detail}</p>
+                                <p className="route-eta">{stop.eta}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="map-card">
+                            <iframe
+                              title={`Singapore driver route for ${job.id}`}
+                              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127654.62967623472!2d103.68375801280434!3d1.344377213089884!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da11241b5398ab%3A0x500f7acaedaa150!2sSingapore!5e0!3m2!1sen!2ssg!4v1731000000000!5m2!1sen!2ssg"
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                            />
+                          </div>
+                          <div className="map-actions">
+                            <button type="button" className="secondary-action" onClick={() => setIsMapExpanded(true)}>
+                              Expand map
+                            </button>
+                            <button type="button" className="ghost">
+                              Launch navigation
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="action-row">
+                          <button 
+                            type="button" 
+                            className="primary-action" 
+                            onClick={() => handleAdvanceStatusForJob(job.id)} 
+                            disabled={isCurrentAdvanceDisabled}
+                          >
+                            {isCurrentAdvanceDisabled ? 'Job completed' : 'Advance to next step'}
+                          </button>
+                          <button type="button" className="ghost">
+                            Confirm pickup
+                          </button>
+                          <button type="button" className="ghost">
+                            Contact customer
+                          </button>
+                          <button type="button" className="ghost">
+                            Contact partner
+                          </button>
+                          <button type="button" className="ghost">
+                            Report issue
+                          </button>
+                        </div>
                       </div>
                     )}
-                    <div className="job-card">
-                      <div className="job-top">
-                        <div>
-                          <p className="eyebrow">Active job</p>
-                          <h3>{activeJob.id}</h3>
-                        </div>
-                        <span className="pill">{activeJobStatus.label}</span>
-                      </div>
-                      <p className="customer-line">
-                        {activeJob.customer} · {activeJob.bags} bags
-                      </p>
-                      <p className="label">Pickup</p>
-                      <p>{activeJob.pickup}</p>
-                      <p className="label">Laundry Partner</p>
-                      <p>{activeJob.partner}</p>
-                      <p className="label">Drop-off</p>
-                      <p>{activeJob.dropoff}</p>
-                      <div className="badge-row compact">
-                        <span>{activeJob.service}</span>
-                        <span>{activeJob.eta}</span>
-                        <span>${activeJob.payout.toFixed(2)}</span>
-                      </div>
-                      {activeJob.notes && <p className="note">Note: {activeJob.notes}</p>}
-                    </div>
-
-                    <div className="timeline compact">
-                      {statusFlow.map((status, index) => (
-                        <div key={status.key} className="timeline-item compact">
-                          <div className={index <= activeJobStageIndex ? 'dot active' : 'dot'} />
-                          <div>
-                            <p className="timeline-title">{status.label}</p>
-                            <p className="timeline-detail">{status.detail}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="route-card tight">
-                      <p className="eyebrow">Route overview</p>
-                      <div className="route-stops">
-                        {buildRouteStops(activeJob).map((stop) => (
-                          <div key={stop.label} className="route-stop">
-                            <p className="label">{stop.label}</p>
-                            <p>{stop.detail}</p>
-                            <p className="route-eta">{stop.eta}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="map-card">
-                        <iframe
-                          title="Singapore driver route"
-                          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127654.62967623472!2d103.68375801280434!3d1.344377213089884!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da11241b5398ab%3A0x500f7acaedaa150!2sSingapore!5e0!3m2!1sen!2ssg!4v1731000000000!5m2!1sen!2ssg"
-                          loading="lazy"
-                          referrerPolicy="no-referrer-when-downgrade"
-                        />
-                      </div>
-                      <div className="map-actions">
-                        <button type="button" className="secondary-action" onClick={() => setIsMapExpanded(true)}>
-                          Expand map
-                        </button>
-                        <button type="button" className="ghost">
-                          Launch navigation
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="action-row">
-                      <button type="button" className="primary-action" onClick={handleAdvanceStatus} disabled={isAdvanceDisabled}>
-                        {isAdvanceDisabled ? 'Job completed' : 'Advance to next step'}
-                      </button>
-                      <button type="button" className="ghost">
-                        Confirm pickup
-                      </button>
-                      <button type="button" className="ghost">
-                        Contact customer
-                      </button>
-                      <button type="button" className="ghost">
-                        Contact partner
-                      </button>
-                      <button type="button" className="ghost">
-                        Report issue
-                      </button>
-                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </>
           ) : (
             <div className="empty-state">

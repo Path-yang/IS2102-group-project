@@ -1017,6 +1017,10 @@ main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+.collapsible-section:last-child {
+  margin-bottom: 0;
+}
+
 .collapsible-header {
   width: 100%;
   background: white;
