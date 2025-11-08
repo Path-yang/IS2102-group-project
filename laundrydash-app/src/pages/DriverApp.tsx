@@ -269,34 +269,23 @@ const DriverApp = () => {
   return (
     <main className="driver-app">
       <header className="driver-header">
-        <div>
-          <p className="eyebrow">LaundryDash Driver</p>
-          <h1>Shift cockpit</h1>
-          <p className="subtitle">
-            Accept jobs, navigate between customer and partner stops, update proof-of-service, and
-            track earnings in one screen built for mobile portrait mode.
-          </p>
-        </div>
         <Link to="/" className="home-pill secondary small-pill">
           Home
         </Link>
-      </header>
-
-      <section className="status-bar">
-        <div>
-          <p className="eyebrow">Availability</p>
-          <h2>{isOnline ? 'Online & discoverable' : 'Offline'}</h2>
-          <p>{isOnline ? 'You can receive new LaundryDash requests.' : 'You will not get jobs.'}</p>
+        <div className="status-toggle">
+          <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}>
+            {isOnline ? 'Online' : 'Offline'}
+          </span>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={isOnline}
+              onChange={() => setIsOnline((prev) => !prev)}
+            />
+            <span className="slider" />
+          </label>
         </div>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={isOnline}
-            onChange={() => setIsOnline((prev) => !prev)}
-          />
-          <span className="slider" />
-        </label>
-      </section>
+      </header>
 
       <nav className="driver-tabs">
         {tabs.map((tab) => (
@@ -437,9 +426,9 @@ const DriverApp = () => {
                 {activeJob.notes && <p className="note">Note: {activeJob.notes}</p>}
               </div>
 
-              <div className="timeline">
+              <div className="timeline compact">
                 {statusFlow.map((status, index) => (
-                  <div key={status.key} className="timeline-item">
+                  <div key={status.key} className="timeline-item compact">
                     <div className={index <= activeJobStageIndex ? 'dot active' : 'dot'} />
                     <div>
                       <p className="timeline-title">{status.label}</p>
@@ -447,17 +436,9 @@ const DriverApp = () => {
                     </div>
                   </div>
                 ))}
-                <button
-                  type="button"
-                  className="primary-action full"
-                  onClick={handleAdvanceStatus}
-                  disabled={isAdvanceDisabled}
-                >
-                  {isAdvanceDisabled ? 'Job completed' : 'Advance to next step'}
-                </button>
               </div>
 
-              <div className="route-card">
+              <div className="route-card tight">
                 <p className="eyebrow">Route overview</p>
                 <div className="route-stops">
                   {buildRouteStops(activeJob).map((stop) => (
@@ -486,7 +467,10 @@ const DriverApp = () => {
                 </div>
               </div>
 
-              <div className="actions-grid">
+              <div className="action-row">
+                <button type="button" className="primary-action" onClick={handleAdvanceStatus} disabled={isAdvanceDisabled}>
+                  {isAdvanceDisabled ? 'Job completed' : 'Advance to next step'}
+                </button>
                 <button type="button" className="ghost">
                   Confirm pickup
                 </button>
