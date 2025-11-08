@@ -395,6 +395,72 @@ main {
   margin: 0.15rem 0 0;
 }
 
+.map-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  margin: 0.75rem 0;
+  border: 1px solid #d9e0ff;
+  height: 180px;
+}
+
+.map-card iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.map-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.map-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.map-modal-content {
+  background: white;
+  border-radius: 1.25rem;
+  padding: 1rem;
+  max-width: 640px;
+  width: 100%;
+  box-shadow: 0 35px 80px rgba(15, 23, 42, 0.35);
+}
+
+.map-modal iframe {
+  width: 100%;
+  height: min(70vh, 520px);
+  border: 0;
+  border-radius: 0.9rem;
+}
+
+.map-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.ghost.small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.empty-state {
+  border: 1px dashed #d0d5dd;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: #fdfcff;
+}
+
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

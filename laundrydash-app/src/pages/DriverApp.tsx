@@ -50,20 +50,20 @@ const initialActiveJob: Job = {
   status: 'In Progress',
 };
 
-const routeStops = [
+const buildRouteStops = (job: Job) => [
   {
     label: 'Pickup',
-    detail: initialActiveJob.pickup,
+    detail: job.pickup,
     eta: 'ETA 4 mins',
   },
   {
     label: 'Drop at partner',
-    detail: initialActiveJob.partner,
+    detail: job.partner,
     eta: 'ETA 18 mins',
   },
   {
     label: 'Return to customer',
-    detail: initialActiveJob.dropoff,
+    detail: job.dropoff,
     eta: 'ETA 40 mins',
   },
 ];
@@ -130,6 +130,8 @@ const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'jobs' | 'dashboard'>('active');
   const [statusIndex, setStatusIndex] = useState(1);
+  const [activeJob, setActiveJob] = useState<Job | null>(initialActiveJob);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [incomingRequest, setIncomingRequest] = useState<Job | null>(pendingRequests[0]);
   const [requestQueue, setRequestQueue] = useState<Job[]>(pendingRequests.slice(1));
   const [upcomingJobs, setUpcomingJobs] = useState<Job[]>([
@@ -167,15 +169,16 @@ const DriverApp = () => {
     const nextIndex = statusIndex + 1;
     setStatusIndex(nextIndex);
 
-    if (statusFlow[nextIndex].key === 'completed') {
+    if (activeJob && statusFlow[nextIndex].key === 'completed') {
       setCompletedJobs((prev) => [
         {
-          ...initialActiveJob,
+          ...activeJob,
           status: 'Completed',
           eta: 'Completed just now',
         },
         ...prev,
       ]);
+      setActiveJob(null);
     }
   };
 
@@ -196,15 +199,17 @@ const DriverApp = () => {
   };
 
   const jobList = useMemo(() => {
-    return [
-      {
-        ...initialActiveJob,
-        status: activeJobStatus.label,
-        eta: activeJobStatus.detail,
-      },
-      ...upcomingJobs,
-    ];
-  }, [activeJobStatus.label, activeJobStatus.detail, upcomingJobs]);
+    const current = activeJob
+      ? [
+          {
+            ...activeJob,
+            status: activeJobStatus.label,
+            eta: activeJobStatus.detail,
+          },
+        ]
+      : [];
+    return [...current, ...upcomingJobs];
+  }, [activeJob, activeJobStatus.label, activeJobStatus.detail, upcomingJobs]);
 
   return (
     <main className="driver-app">
@@ -290,81 +295,104 @@ const DriverApp = () => {
 
       {activeTab === 'active' && (
         <section className="panel">
-          <div className="job-card">
-            <div className="job-top">
-              <div>
-                <p className="eyebrow">Active job</p>
-                <h3>{initialActiveJob.id}</h3>
+          {activeJob ? (
+            <>
+              <div className="job-card">
+                <div className="job-top">
+                  <div>
+                    <p className="eyebrow">Active job</p>
+                    <h3>{activeJob.id}</h3>
+                  </div>
+                  <span className="pill">{activeJobStatus.label}</span>
+                </div>
+                <p className="customer-line">
+                  {activeJob.customer} · {activeJob.bags} bags
+                </p>
+                <p className="label">Pickup</p>
+                <p>{activeJob.pickup}</p>
+                <p className="label">Laundry Partner</p>
+                <p>{activeJob.partner}</p>
+                <p className="label">Drop-off</p>
+                <p>{activeJob.dropoff}</p>
+                <div className="badge-row compact">
+                  <span>{activeJob.service}</span>
+                  <span>{activeJob.eta}</span>
+                  <span>${activeJob.payout.toFixed(2)}</span>
+                </div>
+                {activeJob.notes && <p className="note">Note: {activeJob.notes}</p>}
               </div>
-              <span className="pill">{activeJobStatus.label}</span>
-            </div>
-            <p className="customer-line">
-              {initialActiveJob.customer} · {initialActiveJob.bags} bags
-            </p>
-            <p className="label">Pickup</p>
-            <p>{initialActiveJob.pickup}</p>
-            <p className="label">Laundry Partner</p>
-            <p>{initialActiveJob.partner}</p>
-            <p className="label">Drop-off</p>
-            <p>{initialActiveJob.dropoff}</p>
-            <div className="badge-row compact">
-              <span>{initialActiveJob.service}</span>
-              <span>{initialActiveJob.eta}</span>
-              <span>${initialActiveJob.payout.toFixed(2)}</span>
-            </div>
-            {initialActiveJob.notes && <p className="note">Note: {initialActiveJob.notes}</p>}
-          </div>
 
-          <div className="timeline">
-            {statusFlow.map((status, index) => (
-              <div key={status.key} className="timeline-item">
-                <div className={index <= statusIndex ? 'dot active' : 'dot'} />
-                <div>
-                  <p className="timeline-title">{status.label}</p>
-                  <p className="timeline-detail">{status.detail}</p>
+              <div className="timeline">
+                {statusFlow.map((status, index) => (
+                  <div key={status.key} className="timeline-item">
+                    <div className={index <= statusIndex ? 'dot active' : 'dot'} />
+                    <div>
+                      <p className="timeline-title">{status.label}</p>
+                      <p className="timeline-detail">{status.detail}</p>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="primary-action full"
+                  onClick={handleAdvanceStatus}
+                  disabled={statusIndex >= statusFlow.length - 1}
+                >
+                  {statusIndex >= statusFlow.length - 1 ? 'Job completed' : 'Advance to next step'}
+                </button>
+              </div>
+
+              <div className="route-card">
+                <p className="eyebrow">Route overview</p>
+                <div className="route-stops">
+                  {buildRouteStops(activeJob).map((stop) => (
+                    <div key={stop.label} className="route-stop">
+                      <p className="label">{stop.label}</p>
+                      <p>{stop.detail}</p>
+                      <p className="route-eta">{stop.eta}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="map-card">
+                  <iframe
+                    title="Singapore driver route"
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127654.62967623472!2d103.68375801280434!3d1.344377213089884!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da11241b5398ab%3A0x500f7acaedaa150!2sSingapore!5e0!3m2!1sen!2ssg!4v1731000000000!5m2!1sen!2ssg"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+                <div className="map-actions">
+                  <button type="button" className="secondary-action" onClick={() => setIsMapExpanded(true)}>
+                    Expand map
+                  </button>
+                  <button type="button" className="ghost">
+                    Launch navigation
+                  </button>
                 </div>
               </div>
-            ))}
-            <button
-              type="button"
-              className="primary-action full"
-              onClick={handleAdvanceStatus}
-              disabled={statusIndex >= statusFlow.length - 1}
-            >
-              {statusIndex >= statusFlow.length - 1 ? 'Job completed' : 'Advance to next step'}
-            </button>
-          </div>
 
-          <div className="route-card">
-            <p className="eyebrow">Route overview</p>
-            <div className="route-stops">
-              {routeStops.map((stop) => (
-                <div key={stop.label} className="route-stop">
-                  <p className="label">{stop.label}</p>
-                  <p>{stop.detail}</p>
-                  <p className="route-eta">{stop.eta}</p>
-                </div>
-              ))}
+              <div className="actions-grid">
+                <button type="button" className="ghost">
+                  Confirm pickup
+                </button>
+                <button type="button" className="ghost">
+                  Contact customer
+                </button>
+                <button type="button" className="ghost">
+                  Contact partner
+                </button>
+                <button type="button" className="ghost">
+                  Report issue
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">
+              <p className="eyebrow">Active job</p>
+              <h3>No job in progress</h3>
+              <p>Accept a pending request to see the workflow here.</p>
             </div>
-            <button type="button" className="secondary-action">
-              Launch navigation
-            </button>
-          </div>
-
-          <div className="actions-grid">
-            <button type="button" className="ghost">
-              Confirm pickup
-            </button>
-            <button type="button" className="ghost">
-              Contact customer
-            </button>
-            <button type="button" className="ghost">
-              Contact partner
-            </button>
-            <button type="button" className="ghost">
-              Report issue
-            </button>
-          </div>
+          )}
         </section>
       )}
 
@@ -448,6 +476,24 @@ const DriverApp = () => {
             </ul>
           </div>
         </section>
+      )}
+      {isMapExpanded && (
+        <div className="map-modal" role="dialog" aria-modal="true">
+          <div className="map-modal-content">
+            <div className="map-modal-header">
+              <h3>Singapore route overview</h3>
+              <button type="button" className="ghost small" onClick={() => setIsMapExpanded(false)}>
+                Close
+              </button>
+            </div>
+            <iframe
+              title="Singapore driver enlarged map"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127654.62967623472!2d103.68375801280434!3d1.344377213089884!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da11241b5398ab%3A0x500f7acaedaa150!2sSingapore!5e0!3m2!1sen!2ssg!4v1731000000000!5m2!1sen!2ssg"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </div>
       )}
     </main>
   );
