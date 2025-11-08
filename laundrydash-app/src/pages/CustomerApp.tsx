@@ -427,9 +427,6 @@ const CustomerApp = () => {
             <div className="schedule-form">
               <div className="form-header">
                 <h2>Order Details</h2>
-                <button type="button" className="ghost small" onClick={handleCancelOrder}>
-                  Cancel
-                </button>
               </div>
 
               <div className="order-summary-card">
@@ -638,6 +635,14 @@ const CustomerApp = () => {
                 onClick={handleProceedToPayment}
               >
                 Review & Pay
+              </button>
+
+              <button
+                type="button"
+                className="ghost full"
+                onClick={handleCancelOrder}
+              >
+                Cancel Order
               </button>
             </div>
           )}
