@@ -10,6 +10,7 @@ type StatusKey =
   | 'delivered'
   | 'completed';
 
+type Direction = 'toPartner' | 'toCustomer';
 type Job = {
   id: string;
   customer: string;
@@ -23,25 +24,35 @@ type Job = {
   bags: number;
   notes?: string;
   status: string;
+  direction: Direction;
 };
 
 type TabKey = 'active' | 'requests' | 'jobs' | 'dashboard';
 
-const statusFlow: Array<{ key: StatusKey; label: string; detail: string }> = [
-  { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
-  { key: 'enRoutePickup', label: 'En Route to Pickup', detail: 'Navigating to customer' },
-  { key: 'pickedUp', label: 'Picked Up', detail: 'Laundry secured with photo proof' },
-  { key: 'atPartner', label: 'Delivered to Partner', detail: 'Drop-off to FreshFoam Laundry' },
-  { key: 'returning', label: 'En Route to Customer', detail: 'Clean garments onboard' },
-  { key: 'delivered', label: 'Delivered', detail: 'Customer confirmed receipt' },
-  { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
-];
+const statusFlows: Record<Direction, Array<{ key: StatusKey; label: string; detail: string }>> = {
+  toPartner: [
+    { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
+    { key: 'enRoutePickup', label: 'En Route to Customer', detail: 'Navigating to pickup location' },
+    { key: 'pickedUp', label: 'Picked Up', detail: 'Laundry secured with photo proof' },
+    { key: 'atPartner', label: 'Delivered to Partner', detail: 'Drop-off at laundry partner' },
+    { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
+  ],
+  toCustomer: [
+    { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
+    { key: 'enRoutePickup', label: 'En Route to Partner', detail: 'Heading to collect clean load' },
+    { key: 'atPartner', label: 'Arrived at Partner', detail: 'Ready to collect garments' },
+    { key: 'pickedUp', label: 'Collected Laundry', detail: 'Clean garments onboard' },
+    { key: 'returning', label: 'Return to Customer', detail: 'Navigating to customer drop-off' },
+    { key: 'delivered', label: 'Delivered', detail: 'Customer confirmed receipt' },
+    { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
+  ],
+};
 
 const nextActionCopy: Record<StatusKey, string> = {
-  accepted: 'Accept job',
-  enRoutePickup: 'Start pickup route',
+  accepted: 'Start route',
+  enRoutePickup: 'Arrived at pickup',
   pickedUp: 'Confirm pickup',
-  atPartner: 'Drop at partner',
+  atPartner: 'Handle handoff',
   returning: 'Return to customer',
   delivered: 'Confirm delivery',
   completed: 'Complete job',
@@ -60,6 +71,7 @@ const initialActiveJob: Job = {
   bags: 2,
   notes: 'Silk blouse in garment bag. Fragile.',
   status: 'In Progress',
+  direction: 'toPartner',
 };
 
 const secondaryActiveJob: Job = {
@@ -75,27 +87,41 @@ const secondaryActiveJob: Job = {
   bags: 3,
   notes: 'King duvet strapped separately.',
   status: 'In Progress',
+  direction: 'toCustomer',
 };
 
 const seededActiveJobs: Job[] = [initialActiveJob, secondaryActiveJob];
 
-const buildRouteStops = (job: Job) => [
-  {
-    label: 'Pickup',
-    detail: job.pickup,
-    eta: 'ETA 4 mins',
-  },
-  {
-    label: 'Drop at partner',
-    detail: job.partner,
-    eta: 'ETA 18 mins',
-  },
-  {
-    label: 'Return to customer',
-    detail: job.dropoff,
-    eta: 'ETA 40 mins',
-  },
-];
+const buildRouteStops = (job: Job) => {
+  if (job.direction === 'toPartner') {
+    return [
+      {
+        label: 'Pickup customer',
+        detail: job.pickup,
+        eta: 'ETA 4 mins',
+      },
+      {
+        label: 'Drop at partner',
+        detail: job.partner,
+        eta: 'ETA 18 mins',
+      },
+    ];
+  }
+  return [
+    {
+      label: 'Pickup at partner',
+      detail: job.partner,
+      eta: 'ETA 4 mins',
+    },
+    {
+      label: 'Return to customer',
+      detail: job.dropoff,
+      eta: 'ETA 18 mins',
+    },
+  ];
+};
+
+const randomDirection = (): Direction => (Math.random() < 0.5 ? 'toPartner' : 'toCustomer');
 
 const pendingRequests: Job[] = [
   {
@@ -110,6 +136,7 @@ const pendingRequests: Job[] = [
     eta: '30 mins',
     bags: 1,
     status: 'Awaiting',
+    direction: 'toPartner',
   },
   {
     id: 'LD-2391',
@@ -123,6 +150,7 @@ const pendingRequests: Job[] = [
     eta: '40 mins',
     bags: 1,
     status: 'Awaiting',
+    direction: 'toCustomer',
   },
 ];
 
@@ -139,6 +167,7 @@ const completedSeed: Job[] = [
     eta: 'Completed 09:45',
     bags: 1,
     status: 'Completed',
+    direction: 'toPartner',
   },
   {
     id: 'LD-2380',
@@ -152,6 +181,7 @@ const completedSeed: Job[] = [
     eta: 'Completed 10:20',
     bags: 3,
     status: 'Completed',
+    direction: 'toCustomer',
   },
 ];
 
@@ -178,6 +208,7 @@ const DriverApp = () => {
       eta: 'Pickup 14:00',
       bags: 2,
       status: 'Queued',
+      direction: 'toPartner',
     },
   ]);
   const [completedJobs, setCompletedJobs] = useState<Job[]>(completedSeed);
@@ -211,30 +242,29 @@ const DriverApp = () => {
   };
 
   const handleAdvanceStatusForJob = (jobId: string) => {
+    const job = activeJobs.find((j) => j.id === jobId);
+    if (!job) return;
+    const flow = statusFlows[job.direction];
+
     setJobStatusMap((prev) => {
       const currentStage = prev[jobId] ?? 0;
-      if (currentStage >= statusFlow.length - 1) {
+      if (currentStage >= flow.length - 1) {
         return prev;
       }
       const nextIndex = currentStage + 1;
       const updated = { ...prev, [jobId]: nextIndex };
-      const nextStatus = statusFlow[nextIndex];
+      const nextStatus = flow[nextIndex];
 
       if (nextStatus.key === 'completed') {
-        const completingJob = activeJobs.find((job) => job.id === jobId);
-        if (completingJob) {
-          setCompletedJobs((prevCompleted) => [
-            {
-              ...completingJob,
-              status: 'Completed',
-              eta: 'Completed just now',
-            },
-            ...prevCompleted,
-          ]);
-          setActiveJobs((prevJobs) => {
-            return prevJobs.filter((job) => job.id !== jobId);
-          });
-        }
+        setCompletedJobs((prevCompleted) => [
+          {
+            ...job,
+            status: 'Completed',
+            eta: 'Completed just now',
+          },
+          ...prevCompleted,
+        ]);
+        setActiveJobs((prevJobs) => prevJobs.filter((j) => j.id !== jobId));
         const { [jobId]: _removed, ...rest } = updated;
         return rest;
       }
@@ -245,7 +275,9 @@ const DriverApp = () => {
 
   const handleAcceptRequest = () => {
     if (!incomingRequest) return;
-    setActiveJobs((prev) => [...prev, { ...incomingRequest, status: 'In Progress' }]);
+    const direction = randomDirection();
+    const newJob = { ...incomingRequest, status: 'In Progress', direction };
+    setActiveJobs((prev) => [...prev, newJob]);
     setJobStatusMap((prev) => ({ ...prev, [incomingRequest.id]: 0 }));
     const [next, ...rest] = requestQueue;
     setIncomingRequest(next ?? null);
@@ -262,11 +294,12 @@ const DriverApp = () => {
 
   const jobList = useMemo(() => {
     const activeEntries = activeJobs.map((job) => {
-      const index = jobStatusMap[job.id] ?? 0;
+      const flow = statusFlows[job.direction];
+      const index = Math.min(jobStatusMap[job.id] ?? 0, flow.length - 1);
       return {
         ...job,
-        status: statusFlow[index].label,
-        eta: statusFlow[index].detail,
+        status: flow[index].label,
+        eta: flow[index].detail,
       };
     });
     return [...activeEntries, ...upcomingJobs];
@@ -382,13 +415,14 @@ const DriverApp = () => {
             <>
               {/* Individual Collapsible Cards for Each Active Job */}
               {activeJobs.map((job) => {
-                const jobStageIndex = jobStatusMap[job.id] ?? 0;
-                const jobStatus = statusFlow[jobStageIndex];
+                const flow = statusFlows[job.direction];
+                const jobStageIndex = Math.min(jobStatusMap[job.id] ?? 0, flow.length - 1);
+                const jobStatus = flow[jobStageIndex];
                 const isExpanded = expandedJobIds.includes(job.id);
-                const isCurrentAdvanceDisabled = jobStageIndex >= statusFlow.length - 1;
+                const isCurrentAdvanceDisabled = jobStageIndex >= flow.length - 1;
                 const nextStageKey = isCurrentAdvanceDisabled
                   ? 'completed'
-                  : statusFlow[jobStageIndex + 1].key;
+                  : flow[jobStageIndex + 1].key;
                 const nextStepLabel = isCurrentAdvanceDisabled
                   ? 'All steps done'
                   : nextActionCopy[nextStageKey] ?? 'Advance job';
@@ -445,7 +479,7 @@ const DriverApp = () => {
                         </div>
 
                         <div className="timeline compact">
-                          {statusFlow.map((status, statusIndex) => (
+                          {flow.map((status, statusIndex) => (
                             <div key={status.key} className="timeline-item compact">
                               <div className={statusIndex <= jobStageIndex ? 'dot active' : 'dot'} />
                               <div>
