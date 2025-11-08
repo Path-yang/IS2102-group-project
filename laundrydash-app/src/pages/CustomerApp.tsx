@@ -7,9 +7,16 @@ type Service = {
   id: string;
   name: string;
   description: string;
-  price: string;
+  priceType: 'per-kg' | 'per-item';
+  price: number;
   duration: string;
   icon: string;
+};
+
+type TimeSlot = {
+  id: string;
+  time: string;
+  available: boolean;
 };
 
 type Order = {
@@ -22,6 +29,9 @@ type Order = {
   items: number;
   driver?: string;
   address: string;
+  subtotal?: number;
+  deliveryFee?: number;
+  discount?: number;
 };
 
 type OrderStatus = {
@@ -30,20 +40,24 @@ type OrderStatus = {
   completed: boolean;
 };
 
+type OrderFormStep = 'service' | 'details' | 'payment' | 'confirmation';
+
 const services: Service[] = [
   {
     id: 'wash-fold',
     name: 'Wash & Fold',
     description: 'Standard cleaning for everyday garments',
-    price: '$2.50/kg',
+    priceType: 'per-kg',
+    price: 2.5,
     duration: '24-48 hours',
     icon: '👕',
   },
   {
     id: 'dry-clean',
-    name: 'Dry Clean',
+    name: 'Dry Cleaning',
     description: 'Professional dry cleaning for delicate items',
-    price: '$8.00/item',
+    priceType: 'per-item',
+    price: 8.0,
     duration: '48-72 hours',
     icon: '🧥',
   },
@@ -51,7 +65,8 @@ const services: Service[] = [
     id: 'premium',
     name: 'Premium Care',
     description: 'Expert handling for luxury fabrics',
-    price: '$15.00/item',
+    priceType: 'per-item',
+    price: 15.0,
     duration: '3-5 days',
     icon: '✨',
   },
@@ -59,10 +74,26 @@ const services: Service[] = [
     id: 'express',
     name: 'Express Service',
     description: 'Same-day turnaround available',
-    price: '+50% surcharge',
+    priceType: 'per-kg',
+    price: 5.0,
     duration: '4-8 hours',
     icon: '⚡',
   },
+];
+
+const pickupSlots: TimeSlot[] = [
+  { id: 'p1', time: '09:00 AM - 11:00 AM', available: true },
+  { id: 'p2', time: '11:00 AM - 01:00 PM', available: true },
+  { id: 'p3', time: '02:00 PM - 04:00 PM', available: false },
+  { id: 'p4', time: '04:00 PM - 06:00 PM', available: true },
+  { id: 'p5', time: '06:00 PM - 08:00 PM', available: true },
+];
+
+const deliverySlots: TimeSlot[] = [
+  { id: 'd1', time: '10:00 AM - 12:00 PM', available: true },
+  { id: 'd2', time: '02:00 PM - 04:00 PM', available: true },
+  { id: 'd3', time: '04:00 PM - 06:00 PM', available: false },
+  { id: 'd4', time: '06:00 PM - 08:00 PM', available: true },
 ];
 
 const activeOrderSeed: Order = {
@@ -72,6 +103,9 @@ const activeOrderSeed: Order = {
   pickupDate: 'Today, 2:30 PM',
   deliveryDate: 'Tomorrow, 6:00 PM',
   total: 28.5,
+  subtotal: 25.0,
+  deliveryFee: 5.0,
+  discount: 1.5,
   items: 12,
   driver: 'Ahmad Tan',
   address: '123 Orchard Road, #05-67, 238858',
@@ -85,6 +119,9 @@ const orderHistorySeed: Order[] = [
     pickupDate: 'Nov 5, 10:00 AM',
     deliveryDate: 'Nov 6, 6:00 PM',
     total: 18.75,
+    subtotal: 15.0,
+    deliveryFee: 5.0,
+    discount: 1.25,
     items: 8,
     address: '123 Orchard Road, #05-67, 238858',
   },
@@ -95,6 +132,9 @@ const orderHistorySeed: Order[] = [
     pickupDate: 'Nov 1, 2:00 PM',
     deliveryDate: 'Nov 3, 5:00 PM',
     total: 32.0,
+    subtotal: 32.0,
+    deliveryFee: 5.0,
+    discount: 5.0,
     items: 4,
     address: '123 Orchard Road, #05-67, 238858',
   },
@@ -102,16 +142,33 @@ const orderHistorySeed: Order[] = [
 
 const CustomerApp = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('home');
-  const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [orderStep, setOrderStep] = useState<OrderFormStep>('service');
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [activeOrder] = useState<Order | null>(activeOrderSeed);
   const [orderHistory] = useState<Order[]>(orderHistorySeed);
 
-  // Form state
+  // Order form state
   const [pickupAddress, setPickupAddress] = useState('123 Orchard Road, #05-67, 238858');
-  const [pickupDate, setPickupDate] = useState('');
-  const [pickupTime, setPickupTime] = useState('');
+  const [itemCount, setItemCount] = useState(5);
+  const [selectedPickupSlot, setSelectedPickupSlot] = useState<string>('');
+  const [selectedDeliverySlot, setSelectedDeliverySlot] = useState<string>('');
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoError, setPromoError] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+
+  // Price calculation
+  const calculateSubtotal = () => {
+    if (!selectedService) return 0;
+    return selectedService.price * itemCount;
+  };
+
+  const deliveryFee = 5.0;
+  const discount = promoApplied ? calculateSubtotal() * 0.1 : 0; // 10% discount
+  const subtotal = calculateSubtotal();
+  const total = subtotal + deliveryFee - discount;
 
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'home', label: 'Home' },
@@ -153,26 +210,106 @@ const CustomerApp = () => {
     },
   ];
 
-  const handleSchedulePickup = () => {
-    if (selectedService && pickupDate && pickupTime) {
-      // This would normally make an API call
-      alert(`Pickup scheduled!\nService: ${selectedService}\nDate: ${pickupDate}\nTime: ${pickupTime}\nAddress: ${pickupAddress}`);
-      setShowScheduleForm(false);
-      setSelectedService(null);
-      setActiveTab('track');
+  const handleNewOrder = () => {
+    setOrderStep('service');
+    setSelectedService(null);
+    setPromoCode('');
+    setPromoApplied(false);
+    setPromoError('');
+    setConfirmedOrder(null);
+    // Auto-fill saved address (use case step 1.1)
+  };
+
+  const handleServiceSelect = (service: Service) => {
+    setSelectedService(service);
+    setOrderStep('details');
+  };
+
+  const handleApplyPromo = () => {
+    // Use case step 4.1
+    setPromoError('');
+    if (promoCode.toUpperCase() === 'SAVE10') {
+      setPromoApplied(true);
+      setPromoError('');
+    } else if (promoCode === '') {
+      setPromoError('Please enter a promo code');
     } else {
-      alert('Please fill in all required fields');
+      setPromoError('Invalid or expired promo code');
+      setPromoApplied(false);
     }
   };
 
-  const handleServiceSelect = (serviceId: string) => {
-    setSelectedService(serviceId);
-    setShowScheduleForm(true);
+  const handleRemovePromo = () => {
+    setPromoApplied(false);
+    setPromoCode('');
+    setPromoError('');
+  };
+
+  const handleProceedToPayment = () => {
+    // Use case step 3 validation
+    if (!selectedPickupSlot) {
+      alert('Please select a pickup time slot');
+      return;
+    }
+    if (!selectedDeliverySlot) {
+      alert('Please select a delivery time slot');
+      return;
+    }
+    setOrderStep('payment');
+  };
+
+  const handleProcessPayment = () => {
+    // Use case step 5.1
+    setPaymentProcessing(true);
+    
+    // Simulate payment gateway processing
+    setTimeout(() => {
+      // Simulate 90% success rate
+      const success = Math.random() > 0.1;
+      
+      setPaymentProcessing(false);
+      
+      if (success) {
+        // Use case step 5.1a - Payment succeeds
+        const newOrder: Order = {
+          id: `LD-C-${Math.floor(Math.random() * 10000)}`,
+          service: selectedService?.name || '',
+          status: 'confirmed',
+          pickupDate: pickupSlots.find(s => s.id === selectedPickupSlot)?.time || '',
+          deliveryDate: deliverySlots.find(s => s.id === selectedDeliverySlot)?.time || '',
+          total: total,
+          subtotal: subtotal,
+          deliveryFee: deliveryFee,
+          discount: discount,
+          items: itemCount,
+          address: pickupAddress,
+        };
+        
+        setConfirmedOrder(newOrder);
+        setOrderStep('confirmation');
+      } else {
+        // Use case step 5.1b - Payment fails
+        alert('Payment failed. Please try again or use an alternative payment method.');
+      }
+    }, 2000);
+  };
+
+  const handleCancelOrder = () => {
+    // Use case exception A1
+    if (confirm('Are you sure you want to cancel this order?')) {
+      setOrderStep('service');
+      setSelectedService(null);
+      setSelectedPickupSlot('');
+      setSelectedDeliverySlot('');
+      setPromoCode('');
+      setPromoApplied(false);
+    }
   };
 
   const handleReorder = (order: Order) => {
     alert(`Reordering: ${order.service}\nOrder ID: ${order.id}`);
     setActiveTab('home');
+    handleNewOrder();
   };
 
   return (
@@ -182,7 +319,7 @@ const CustomerApp = () => {
           <p className="eyebrow">LaundryDash Customer</p>
           <h1>Your Laundry Service</h1>
           <p className="subtitle">
-            Schedule pickups, track orders, and enjoy fresh laundry delivered to your door.
+            Order laundry services with transparent pricing and flexible scheduling.
           </p>
         </div>
         <Link to="/" className="home-pill secondary small-pill">
@@ -203,13 +340,13 @@ const CustomerApp = () => {
         ))}
       </nav>
 
-      {/* HOME TAB - Service Selection */}
+      {/* HOME TAB - New Order Flow */}
       {activeTab === 'home' && (
         <section className="panel">
-          {!showScheduleForm ? (
+          {orderStep === 'service' && (
             <>
               <div className="customer-welcome">
-                <h2>Choose Your Service</h2>
+                <h2>Place New Order</h2>
                 <p>Select a laundry service to get started</p>
               </div>
 
@@ -218,13 +355,15 @@ const CustomerApp = () => {
                   <div
                     key={service.id}
                     className="service-card"
-                    onClick={() => handleServiceSelect(service.id)}
+                    onClick={() => handleServiceSelect(service)}
                   >
                     <div className="service-icon">{service.icon}</div>
                     <h3>{service.name}</h3>
                     <p className="service-desc">{service.description}</p>
                     <div className="service-meta">
-                      <span className="service-price">{service.price}</span>
+                      <span className="service-price">
+                        ${service.price.toFixed(2)}/{service.priceType === 'per-kg' ? 'kg' : 'item'}
+                      </span>
                       <span className="service-duration">{service.duration}</span>
                     </div>
                   </div>
@@ -248,35 +387,30 @@ const CustomerApp = () => {
                 </div>
               )}
             </>
-          ) : (
+          )}
+
+          {orderStep === 'details' && selectedService && (
             <div className="schedule-form">
               <div className="form-header">
-                <h2>Schedule Pickup</h2>
-                <button
-                  type="button"
-                  className="ghost small"
-                  onClick={() => {
-                    setShowScheduleForm(false);
-                    setSelectedService(null);
-                  }}
-                >
+                <h2>Order Details</h2>
+                <button type="button" className="ghost small" onClick={handleCancelOrder}>
                   Cancel
                 </button>
               </div>
 
-              <div className="form-field">
-                <label htmlFor="service">Selected Service</label>
-                <input
-                  id="service"
-                  type="text"
-                  value={services.find((s) => s.id === selectedService)?.name || ''}
-                  disabled
-                  className="input-field"
-                />
+              <div className="order-summary-card">
+                <p className="eyebrow">Selected Service</p>
+                <div className="selected-service">
+                  <span className="service-icon-small">{selectedService.icon}</span>
+                  <div>
+                    <h3>{selectedService.name}</h3>
+                    <p>${selectedService.price.toFixed(2)}/{selectedService.priceType === 'per-kg' ? 'kg' : 'item'}</p>
+                  </div>
+                </div>
               </div>
 
               <div className="form-field">
-                <label htmlFor="address">Pickup Address</label>
+                <label htmlFor="address">Pickup & Delivery Address</label>
                 <input
                   id="address"
                   type="text"
@@ -285,40 +419,56 @@ const CustomerApp = () => {
                   placeholder="Enter your address"
                   className="input-field"
                 />
+                <p className="field-hint">Service area check: ✓ Available</p>
               </div>
 
-              <div className="form-row">
-                <div className="form-field">
-                  <label htmlFor="date">Pickup Date</label>
-                  <input
-                    id="date"
-                    type="date"
-                    value={pickupDate}
-                    onChange={(e) => setPickupDate(e.target.value)}
-                    className="input-field"
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                </div>
+              <div className="form-field">
+                <label htmlFor="items">
+                  Number of {selectedService.priceType === 'per-kg' ? 'Kilograms' : 'Items'}
+                </label>
+                <input
+                  id="items"
+                  type="number"
+                  min="1"
+                  value={itemCount}
+                  onChange={(e) => setItemCount(parseInt(e.target.value) || 1)}
+                  className="input-field"
+                />
+              </div>
 
-                <div className="form-field">
-                  <label htmlFor="time">Pickup Time</label>
-                  <select
-                    id="time"
-                    value={pickupTime}
-                    onChange={(e) => setPickupTime(e.target.value)}
-                    className="input-field"
-                  >
-                    <option value="">Select time</option>
-                    <option value="09:00">09:00 AM</option>
-                    <option value="10:00">10:00 AM</option>
-                    <option value="11:00">11:00 AM</option>
-                    <option value="12:00">12:00 PM</option>
-                    <option value="14:00">02:00 PM</option>
-                    <option value="15:00">03:00 PM</option>
-                    <option value="16:00">04:00 PM</option>
-                    <option value="17:00">05:00 PM</option>
-                    <option value="18:00">06:00 PM</option>
-                  </select>
+              <div className="form-field">
+                <label>Pickup Time Slot</label>
+                <div className="time-slots">
+                  {pickupSlots.map((slot) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      className={`time-slot ${!slot.available ? 'unavailable' : ''} ${selectedPickupSlot === slot.id ? 'selected' : ''}`}
+                      onClick={() => slot.available && setSelectedPickupSlot(slot.id)}
+                      disabled={!slot.available}
+                    >
+                      {slot.time}
+                      {!slot.available && <span className="unavailable-badge">Full</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label>Delivery Time Slot</label>
+                <div className="time-slots">
+                  {deliverySlots.map((slot) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      className={`time-slot ${!slot.available ? 'unavailable' : ''} ${selectedDeliverySlot === slot.id ? 'selected' : ''}`}
+                      onClick={() => slot.available && setSelectedDeliverySlot(slot.id)}
+                      disabled={!slot.available}
+                    >
+                      {slot.time}
+                      {!slot.available && <span className="unavailable-badge">Full</span>}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -334,24 +484,200 @@ const CustomerApp = () => {
                 />
               </div>
 
-              <div className="form-summary">
-                <div className="summary-row">
-                  <span>Estimated Pickup</span>
-                  <strong>{pickupDate && pickupTime ? `${pickupDate} at ${pickupTime}` : 'Not set'}</strong>
+              <div className="promo-section">
+                <label htmlFor="promo">Promo Code</label>
+                <div className="promo-input-group">
+                  <input
+                    id="promo"
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value);
+                      setPromoError('');
+                    }}
+                    placeholder="Enter promo code"
+                    className="input-field"
+                    disabled={promoApplied}
+                  />
+                  {promoApplied ? (
+                    <button type="button" className="ghost" onClick={handleRemovePromo}>
+                      Remove
+                    </button>
+                  ) : (
+                    <button type="button" className="secondary-action" onClick={handleApplyPromo}>
+                      Apply
+                    </button>
+                  )}
                 </div>
-                <div className="summary-row">
-                  <span>Estimated Delivery</span>
-                  <strong>24-48 hours after pickup</strong>
+                {promoError && <p className="error-message">{promoError}</p>}
+                {promoApplied && <p className="success-message">✓ Promo code applied: 10% discount</p>}
+                <p className="field-hint">Try: SAVE10 for 10% off</p>
+              </div>
+
+              <div className="price-breakdown">
+                <h3>Price Summary</h3>
+                <div className="price-row">
+                  <span>Subtotal ({itemCount} {selectedService.priceType === 'per-kg' ? 'kg' : 'items'})</span>
+                  <strong>${subtotal.toFixed(2)}</strong>
+                </div>
+                <div className="price-row">
+                  <span>Delivery Fee</span>
+                  <strong>${deliveryFee.toFixed(2)}</strong>
+                </div>
+                {promoApplied && (
+                  <div className="price-row discount">
+                    <span>Discount (10%)</span>
+                    <strong>-${discount.toFixed(2)}</strong>
+                  </div>
+                )}
+                <div className="price-row total">
+                  <span>Total</span>
+                  <strong>${total.toFixed(2)}</strong>
                 </div>
               </div>
 
               <button
                 type="button"
                 className="primary-action full"
-                onClick={handleSchedulePickup}
+                onClick={handleProceedToPayment}
               >
-                Confirm Pickup
+                Review & Pay
               </button>
+            </div>
+          )}
+
+          {orderStep === 'payment' && selectedService && (
+            <div className="payment-form">
+              <div className="form-header">
+                <h2>Payment</h2>
+                <button type="button" className="ghost small" onClick={() => setOrderStep('details')}>
+                  Back
+                </button>
+              </div>
+
+              <div className="price-breakdown">
+                <h3>Order Summary</h3>
+                <div className="order-summary-item">
+                  <p className="eyebrow">Service</p>
+                  <p>{selectedService.name}</p>
+                </div>
+                <div className="order-summary-item">
+                  <p className="eyebrow">Pickup</p>
+                  <p>{pickupSlots.find(s => s.id === selectedPickupSlot)?.time}</p>
+                </div>
+                <div className="order-summary-item">
+                  <p className="eyebrow">Delivery</p>
+                  <p>{deliverySlots.find(s => s.id === selectedDeliverySlot)?.time}</p>
+                </div>
+                <div className="price-row">
+                  <span>Subtotal</span>
+                  <strong>${subtotal.toFixed(2)}</strong>
+                </div>
+                <div className="price-row">
+                  <span>Delivery Fee</span>
+                  <strong>${deliveryFee.toFixed(2)}</strong>
+                </div>
+                {promoApplied && (
+                  <div className="price-row discount">
+                    <span>Discount</span>
+                    <strong>-${discount.toFixed(2)}</strong>
+                  </div>
+                )}
+                <div className="price-row total">
+                  <span>Total Amount</span>
+                  <strong>${total.toFixed(2)}</strong>
+                </div>
+              </div>
+
+              <div className="payment-method-section">
+                <h3>Payment Method</h3>
+                <div className="payment-card">
+                  <div>
+                    <p className="eyebrow">Credit Card</p>
+                    <p>•••• •••• •••• 4242</p>
+                  </div>
+                  <span className="pill">Default</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="primary-action full"
+                onClick={handleProcessPayment}
+                disabled={paymentProcessing}
+              >
+                {paymentProcessing ? 'Processing Payment...' : `Pay $${total.toFixed(2)}`}
+              </button>
+
+              <button type="button" className="ghost full" onClick={handleCancelOrder}>
+                Cancel Order
+              </button>
+            </div>
+          )}
+
+          {orderStep === 'confirmation' && confirmedOrder && (
+            <div className="confirmation-screen">
+              <div className="confirmation-icon">✓</div>
+              <h2>Order Confirmed!</h2>
+              <p className="confirmation-subtitle">Your laundry order has been placed successfully</p>
+
+              <div className="confirmation-details">
+                <div className="confirmation-card">
+                  <p className="eyebrow">Order Number</p>
+                  <h3>{confirmedOrder.id}</h3>
+                </div>
+
+                <div className="confirmation-info">
+                  <div className="info-row">
+                    <span className="label">Service</span>
+                    <span>{confirmedOrder.service}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="label">Pickup</span>
+                    <span>{confirmedOrder.pickupDate}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="label">Delivery</span>
+                    <span>{confirmedOrder.deliveryDate}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="label">Total Paid</span>
+                    <span><strong>${confirmedOrder.total.toFixed(2)}</strong></span>
+                  </div>
+                </div>
+
+                <div className="confirmation-notifications">
+                  <p className="eyebrow">✓ Notifications Sent</p>
+                  <ul>
+                    <li>Driver has been notified</li>
+                    <li>Laundry partner has been notified</li>
+                    <li>Confirmation email sent to you</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="confirmation-actions">
+                <button
+                  type="button"
+                  className="primary-action full"
+                  onClick={() => {
+                    setActiveTab('track');
+                    setOrderStep('service');
+                  }}
+                >
+                  Track Order
+                </button>
+                <button
+                  type="button"
+                  className="secondary-action full"
+                  onClick={() => {
+                    setOrderStep('service');
+                    setSelectedService(null);
+                  }}
+                >
+                  Place Another Order
+                </button>
+              </div>
             </div>
           )}
         </section>
@@ -379,9 +705,26 @@ const CustomerApp = () => {
                 <p>{activeOrder.pickupDate}</p>
                 <p className="label">Expected Delivery</p>
                 <p>{activeOrder.deliveryDate}</p>
-                <div className="badge-row compact">
-                  <span>${activeOrder.total.toFixed(2)}</span>
-                  <span>{activeOrder.items} items</span>
+                
+                <div className="price-breakdown compact">
+                  <div className="price-row">
+                    <span>Subtotal</span>
+                    <span>${activeOrder.subtotal?.toFixed(2)}</span>
+                  </div>
+                  <div className="price-row">
+                    <span>Delivery Fee</span>
+                    <span>${activeOrder.deliveryFee?.toFixed(2)}</span>
+                  </div>
+                  {activeOrder.discount && activeOrder.discount > 0 && (
+                    <div className="price-row">
+                      <span>Discount</span>
+                      <span>-${activeOrder.discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="price-row total">
+                    <span>Total</span>
+                    <strong>${activeOrder.total.toFixed(2)}</strong>
+                  </div>
                 </div>
               </div>
 
@@ -439,13 +782,16 @@ const CustomerApp = () => {
             <div className="empty-state">
               <p className="eyebrow">Track Order</p>
               <h3>No active orders</h3>
-              <p>Schedule a pickup to start tracking your laundry.</p>
+              <p>Place an order to start tracking your laundry.</p>
               <button
                 type="button"
                 className="secondary-action"
-                onClick={() => setActiveTab('home')}
+                onClick={() => {
+                  setActiveTab('home');
+                  handleNewOrder();
+                }}
               >
-                Schedule Pickup
+                Place New Order
               </button>
             </div>
           )}
