@@ -25,6 +25,8 @@ type Job = {
   status: string;
 };
 
+type TabKey = 'active' | 'requests' | 'jobs' | 'dashboard';
+
 const statusFlow: Array<{ key: StatusKey; label: string; detail: string }> = [
   { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
   { key: 'enRoutePickup', label: 'En Route to Pickup', detail: 'Navigating to customer' },
@@ -49,6 +51,23 @@ const initialActiveJob: Job = {
   notes: 'Silk blouse in garment bag. Fragile.',
   status: 'In Progress',
 };
+
+const secondaryActiveJob: Job = {
+  id: 'LD-2382',
+  customer: 'Muthu Kumar',
+  pickup: '730 Clementi West St 2, #12-118',
+  dropoff: '15 Science Park Dr, 11800',
+  partner: 'SparkWash Labs (Clementi)',
+  service: 'Dry clean + bedding',
+  payout: 24.5,
+  distance: 12.1,
+  eta: '60 mins total',
+  bags: 3,
+  notes: 'King duvet strapped separately.',
+  status: 'In Progress',
+};
+
+const seededActiveJobs: Job[] = [initialActiveJob, secondaryActiveJob];
 
 const buildRouteStops = (job: Job) => [
   {
@@ -128,13 +147,16 @@ const completedSeed: Job[] = [
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
-  const [activeTab, setActiveTab] = useState<'active' | 'jobs' | 'dashboard'>('active');
-  const [statusIndex, setStatusIndex] = useState(1);
-  const [activeJob, setActiveJob] = useState<Job | null>(initialActiveJob);
+  const [activeTab, setActiveTab] = useState<TabKey>('active');
+  const [activeJobs, setActiveJobs] = useState<Job[]>(seededActiveJobs);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [jobStatusMap, setJobStatusMap] = useState<Record<string, number>>(() =>
+    seededActiveJobs.reduce((acc, job) => ({ ...acc, [job.id]: 1 }), {})
+  );
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [incomingRequest, setIncomingRequest] = useState<Job | null>(pendingRequests[0]);
   const [requestQueue, setRequestQueue] = useState<Job[]>(pendingRequests.slice(1));
-  const [upcomingJobs, setUpcomingJobs] = useState<Job[]>([
+  const [upcomingJobs] = useState<Job[]>([
     {
       id: 'LD-2386',
       customer: 'Nadia Salleh',
@@ -152,6 +174,17 @@ const DriverApp = () => {
   const [completedJobs, setCompletedJobs] = useState<Job[]>(completedSeed);
   const [requestTimer, setRequestTimer] = useState(30);
 
+  const activeJob = activeJobs[activeIndex] ?? null;
+  const activeJobStageIndex = activeJob ? jobStatusMap[activeJob.id] ?? 0 : 0;
+  const activeJobStatus = statusFlow[activeJobStageIndex];
+  const isAdvanceDisabled = !activeJob || activeJobStageIndex >= statusFlow.length - 1;
+  const tabs: Array<{ key: TabKey; label: string }> = [
+    { key: 'active', label: 'Active jobs' },
+    { key: 'requests', label: 'New requests' },
+    { key: 'jobs', label: 'Job board' },
+    { key: 'dashboard', label: 'Dashboard' },
+  ];
+
   useEffect(() => {
     if (!incomingRequest || requestTimer === 0) return;
 
@@ -162,29 +195,52 @@ const DriverApp = () => {
     return () => clearInterval(interval);
   }, [incomingRequest, requestTimer]);
 
-  const activeJobStatus = statusFlow[statusIndex];
-
   const handleAdvanceStatus = () => {
-    if (statusIndex >= statusFlow.length - 1) return;
-    const nextIndex = statusIndex + 1;
-    setStatusIndex(nextIndex);
+    if (!activeJob) return;
+    setJobStatusMap((prev) => {
+      const currentStage = prev[activeJob.id] ?? 0;
+      if (currentStage >= statusFlow.length - 1) {
+        return prev;
+      }
+      const nextIndex = currentStage + 1;
+      const updated = { ...prev, [activeJob.id]: nextIndex };
+      const nextStatus = statusFlow[nextIndex];
 
-    if (activeJob && statusFlow[nextIndex].key === 'completed') {
-      setCompletedJobs((prev) => [
-        {
-          ...activeJob,
-          status: 'Completed',
-          eta: 'Completed just now',
-        },
-        ...prev,
-      ]);
-      setActiveJob(null);
-    }
+      if (nextStatus.key === 'completed') {
+        setCompletedJobs((prevCompleted) => [
+          {
+            ...activeJob,
+            status: 'Completed',
+            eta: 'Completed just now',
+          },
+          ...prevCompleted,
+        ]);
+        setActiveJobs((prevJobs) => {
+          const filtered = prevJobs.filter((job) => job.id !== activeJob.id);
+          setActiveIndex((current) => {
+            if (filtered.length === 0) {
+              return 0;
+            }
+            return Math.min(current, filtered.length - 1);
+          });
+          return filtered;
+        });
+        const { [activeJob.id]: _removed, ...rest } = updated;
+        return rest;
+      }
+
+      return updated;
+    });
   };
 
   const handleAcceptRequest = () => {
     if (!incomingRequest) return;
-    setUpcomingJobs((prev) => [{ ...incomingRequest, status: 'Queued' }, ...prev]);
+    setActiveJobs((prev) => {
+      const nextJobs = [...prev, { ...incomingRequest, status: 'In Progress' }];
+      setActiveIndex(nextJobs.length - 1);
+      return nextJobs;
+    });
+    setJobStatusMap((prev) => ({ ...prev, [incomingRequest.id]: 0 }));
     const [next, ...rest] = requestQueue;
     setIncomingRequest(next ?? null);
     setRequestQueue(rest);
@@ -199,17 +255,16 @@ const DriverApp = () => {
   };
 
   const jobList = useMemo(() => {
-    const current = activeJob
-      ? [
-          {
-            ...activeJob,
-            status: activeJobStatus.label,
-            eta: activeJobStatus.detail,
-          },
-        ]
-      : [];
-    return [...current, ...upcomingJobs];
-  }, [activeJob, activeJobStatus.label, activeJobStatus.detail, upcomingJobs]);
+    const activeEntries = activeJobs.map((job) => {
+      const index = jobStatusMap[job.id] ?? 0;
+      return {
+        ...job,
+        status: statusFlow[index].label,
+        eta: statusFlow[index].detail,
+      };
+    });
+    return [...activeEntries, ...upcomingJobs];
+  }, [activeJobs, jobStatusMap, upcomingJobs]);
 
   return (
     <main className="driver-app">
@@ -243,60 +298,120 @@ const DriverApp = () => {
         </label>
       </section>
 
-      {incomingRequest && (
-        <section className="incoming-card">
-          <div className="incoming-top">
-            <p className="eyebrow">New request • {requestTimer}s left</p>
-            <strong>{incomingRequest.id}</strong>
-          </div>
-          <h3>
-            {incomingRequest.customer} · {incomingRequest.service}
-          </h3>
-          <div className="route-row">
-            <div>
-              <p className="label">Pickup</p>
-              <p>{incomingRequest.pickup}</p>
-            </div>
-            <div>
-              <p className="label">Drop-off</p>
-              <p>{incomingRequest.dropoff}</p>
-            </div>
-          </div>
-          <div className="badge-row">
-            <span>{incomingRequest.distance} km</span>
-            <span>${incomingRequest.payout.toFixed(2)}</span>
-            <span>{incomingRequest.eta}</span>
-          </div>
-          <div className="incoming-actions">
-            <button type="button" className="ghost" onClick={handleRejectRequest}>
-              Reject
-            </button>
-            <button type="button" className="primary-action" onClick={handleAcceptRequest}>
-              Accept job
-            </button>
-          </div>
-        </section>
-      )}
-
       <nav className="driver-tabs">
-        {['active', 'jobs', 'dashboard'].map((tab) => (
+        {tabs.map((tab) => (
           <button
-            key={tab}
+            key={tab.key}
             type="button"
-            className={activeTab === tab ? 'tab active' : 'tab'}
-            onClick={() => setActiveTab(tab as typeof activeTab)}
+            className={activeTab === tab.key ? 'tab active' : 'tab'}
+            onClick={() => setActiveTab(tab.key)}
           >
-            {tab === 'active' && 'Active job'}
-            {tab === 'jobs' && 'Job board'}
-            {tab === 'dashboard' && 'Dashboard'}
+            {tab.label}
           </button>
         ))}
       </nav>
+
+      {activeTab === 'requests' && (
+        <section className="panel">
+          {incomingRequest ? (
+            <div className="incoming-card">
+              <div className="incoming-top">
+                <p className="eyebrow">New request • {requestTimer}s left</p>
+                <strong>{incomingRequest.id}</strong>
+              </div>
+              <h3>
+                {incomingRequest.customer} · {incomingRequest.service}
+              </h3>
+              <div className="route-row">
+                <div>
+                  <p className="label">Pickup</p>
+                  <p>{incomingRequest.pickup}</p>
+                </div>
+                <div>
+                  <p className="label">Drop-off</p>
+                  <p>{incomingRequest.dropoff}</p>
+                </div>
+              </div>
+              <div className="badge-row">
+                <span>{incomingRequest.distance} km</span>
+                <span>${incomingRequest.payout.toFixed(2)}</span>
+                <span>{incomingRequest.eta}</span>
+              </div>
+              <div className="incoming-actions">
+                <button type="button" className="ghost" onClick={handleRejectRequest}>
+                  Reject
+                </button>
+                <button type="button" className="primary-action" onClick={handleAcceptRequest}>
+                  Accept job
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <p className="eyebrow">Live feed</p>
+              <h3>No requests at the moment</h3>
+              <p>We will auto-ping you once a new pickup is within range.</p>
+            </div>
+          )}
+
+          <div className="request-queue">
+            <div className="request-queue-header">
+              <h3>Queued pings</h3>
+              <p>{requestQueue.length} waiting</p>
+            </div>
+            {requestQueue.length ? (
+              requestQueue.map((job) => (
+                <article key={job.id} className="request-row">
+                  <div>
+                    <p className="eyebrow">{job.id}</p>
+                    <h4>{job.customer}</h4>
+                    <p className="label">Pickup</p>
+                    <p>{job.pickup}</p>
+                  </div>
+                  <div className="request-meta">
+                    <p>${job.payout.toFixed(2)}</p>
+                    <p>{job.distance} km</p>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="label">No queued jobs. Enjoy the breather!</p>
+            )}
+          </div>
+        </section>
+      )}
 
       {activeTab === 'active' && (
         <section className="panel">
           {activeJob ? (
             <>
+              {activeJobs.length > 1 && (
+                <div className="job-carousel">
+                  <button
+                    type="button"
+                    className="carousel-btn"
+                    onClick={() => setActiveIndex((prev) => Math.max(prev - 1, 0))}
+                    disabled={activeIndex === 0}
+                    aria-label="Previous active job"
+                  >
+                    ‹
+                  </button>
+                  <p>
+                    Job {activeIndex + 1} of {activeJobs.length}
+                  </p>
+                  <button
+                    type="button"
+                    className="carousel-btn"
+                    onClick={() =>
+                      setActiveIndex((prev) => Math.min(prev + 1, activeJobs.length - 1))
+                    }
+                    disabled={activeIndex === activeJobs.length - 1}
+                    aria-label="Next active job"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
               <div className="job-card">
                 <div className="job-top">
                   <div>
@@ -325,7 +440,7 @@ const DriverApp = () => {
               <div className="timeline">
                 {statusFlow.map((status, index) => (
                   <div key={status.key} className="timeline-item">
-                    <div className={index <= statusIndex ? 'dot active' : 'dot'} />
+                    <div className={index <= activeJobStageIndex ? 'dot active' : 'dot'} />
                     <div>
                       <p className="timeline-title">{status.label}</p>
                       <p className="timeline-detail">{status.detail}</p>
@@ -336,9 +451,9 @@ const DriverApp = () => {
                   type="button"
                   className="primary-action full"
                   onClick={handleAdvanceStatus}
-                  disabled={statusIndex >= statusFlow.length - 1}
+                  disabled={isAdvanceDisabled}
                 >
-                  {statusIndex >= statusFlow.length - 1 ? 'Job completed' : 'Advance to next step'}
+                  {isAdvanceDisabled ? 'Job completed' : 'Advance to next step'}
                 </button>
               </div>
 
