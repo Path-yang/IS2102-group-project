@@ -1,0 +1,456 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+type StatusKey =
+  | 'accepted'
+  | 'enRoutePickup'
+  | 'pickedUp'
+  | 'atPartner'
+  | 'returning'
+  | 'delivered'
+  | 'completed';
+
+type Job = {
+  id: string;
+  customer: string;
+  pickup: string;
+  dropoff: string;
+  partner: string;
+  service: string;
+  payout: number;
+  distance: number;
+  eta: string;
+  bags: number;
+  notes?: string;
+  status: string;
+};
+
+const statusFlow: Array<{ key: StatusKey; label: string; detail: string }> = [
+  { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
+  { key: 'enRoutePickup', label: 'En Route to Pickup', detail: 'Navigating to customer' },
+  { key: 'pickedUp', label: 'Picked Up', detail: 'Laundry secured with photo proof' },
+  { key: 'atPartner', label: 'Delivered to Partner', detail: 'Drop-off to FreshFoam Laundry' },
+  { key: 'returning', label: 'En Route to Customer', detail: 'Clean garments onboard' },
+  { key: 'delivered', label: 'Delivered', detail: 'Customer confirmed receipt' },
+  { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
+];
+
+const initialActiveJob: Job = {
+  id: 'LD-2381',
+  customer: 'Clara Tan',
+  pickup: '6 Battery Rd, #15-02, 049909',
+  dropoff: '22 River Valley Cl, #08-01, 238435',
+  partner: 'FreshFoam Laundry (Bukit Merah)',
+  service: 'Wash & Fold + Premium Dry Clean',
+  payout: 18.9,
+  distance: 9.4,
+  eta: '45 mins total',
+  bags: 2,
+  notes: 'Silk blouse in garment bag. Fragile.',
+  status: 'In Progress',
+};
+
+const routeStops = [
+  {
+    label: 'Pickup',
+    detail: initialActiveJob.pickup,
+    eta: 'ETA 4 mins',
+  },
+  {
+    label: 'Drop at partner',
+    detail: initialActiveJob.partner,
+    eta: 'ETA 18 mins',
+  },
+  {
+    label: 'Return to customer',
+    detail: initialActiveJob.dropoff,
+    eta: 'ETA 40 mins',
+  },
+];
+
+const pendingRequests: Job[] = [
+  {
+    id: 'LD-2390',
+    customer: 'Marcus Chen',
+    pickup: '8 Boon Lay Wy, #09-11, 609964',
+    dropoff: 'LaundryLab HQ, 7030 Ang Mo Kio Ave 5',
+    partner: 'LaundryLab HQ (Ang Mo Kio)',
+    service: 'Wash & Fold subscription bag',
+    payout: 12.4,
+    distance: 5.1,
+    eta: '30 mins',
+    bags: 1,
+    status: 'Awaiting',
+  },
+  {
+    id: 'LD-2391',
+    customer: 'Nurul Hana',
+    pickup: '987B Buangkok Cres, #13-118',
+    dropoff: 'BubbleWorks @ Hougang',
+    partner: 'BubbleWorks',
+    service: 'Dry clean (4 items)',
+    payout: 16.2,
+    distance: 7.8,
+    eta: '40 mins',
+    bags: 1,
+    status: 'Awaiting',
+  },
+];
+
+const completedSeed: Job[] = [
+  {
+    id: 'LD-2379',
+    customer: 'Brandon Goh',
+    pickup: '78 Tiong Bahru Rd',
+    dropoff: 'GreenBubble Lab',
+    partner: 'GreenBubble Lab',
+    service: 'Express wash & fold',
+    payout: 15.2,
+    distance: 6.1,
+    eta: 'Completed 09:45',
+    bags: 1,
+    status: 'Completed',
+  },
+  {
+    id: 'LD-2380',
+    customer: 'University Hall',
+    pickup: '12 Kent Ridge Dr',
+    dropoff: 'Soak Society (Clementi)',
+    partner: 'Soak Society',
+    service: 'Bulk linens',
+    payout: 28.8,
+    distance: 11.2,
+    eta: 'Completed 10:20',
+    bags: 3,
+    status: 'Completed',
+  },
+];
+
+const DriverApp = () => {
+  const [isOnline, setIsOnline] = useState(true);
+  const [activeTab, setActiveTab] = useState<'active' | 'jobs' | 'dashboard'>('active');
+  const [statusIndex, setStatusIndex] = useState(1);
+  const [incomingRequest, setIncomingRequest] = useState<Job | null>(pendingRequests[0]);
+  const [requestQueue, setRequestQueue] = useState<Job[]>(pendingRequests.slice(1));
+  const [upcomingJobs, setUpcomingJobs] = useState<Job[]>([
+    {
+      id: 'LD-2386',
+      customer: 'Nadia Salleh',
+      pickup: '1 Northshore Dr (Piermont Grande)',
+      dropoff: 'SparkWash (Punggol)',
+      partner: 'SparkWash',
+      service: 'Wash & Fold + Shoes',
+      payout: 21.6,
+      distance: 10.2,
+      eta: 'Pickup 14:00',
+      bags: 2,
+      status: 'Queued',
+    },
+  ]);
+  const [completedJobs, setCompletedJobs] = useState<Job[]>(completedSeed);
+  const [requestTimer, setRequestTimer] = useState(30);
+
+  useEffect(() => {
+    if (!incomingRequest || requestTimer === 0) return;
+
+    const interval = setInterval(() => {
+      setRequestTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [incomingRequest, requestTimer]);
+
+  const activeJobStatus = statusFlow[statusIndex];
+
+  const handleAdvanceStatus = () => {
+    if (statusIndex >= statusFlow.length - 1) return;
+    const nextIndex = statusIndex + 1;
+    setStatusIndex(nextIndex);
+
+    if (statusFlow[nextIndex].key === 'completed') {
+      setCompletedJobs((prev) => [
+        {
+          ...initialActiveJob,
+          status: 'Completed',
+          eta: 'Completed just now',
+        },
+        ...prev,
+      ]);
+    }
+  };
+
+  const handleAcceptRequest = () => {
+    if (!incomingRequest) return;
+    setUpcomingJobs((prev) => [{ ...incomingRequest, status: 'Queued' }, ...prev]);
+    const [next, ...rest] = requestQueue;
+    setIncomingRequest(next ?? null);
+    setRequestQueue(rest);
+    setRequestTimer(30);
+  };
+
+  const handleRejectRequest = () => {
+    const [next, ...rest] = requestQueue;
+    setIncomingRequest(next ?? null);
+    setRequestQueue(rest);
+    setRequestTimer(30);
+  };
+
+  const jobList = useMemo(() => {
+    return [
+      {
+        ...initialActiveJob,
+        status: activeJobStatus.label,
+        eta: activeJobStatus.detail,
+      },
+      ...upcomingJobs,
+    ];
+  }, [activeJobStatus.label, activeJobStatus.detail, upcomingJobs]);
+
+  return (
+    <main className="driver-app">
+      <header className="driver-header">
+        <div>
+          <p className="eyebrow">LaundryDash Driver</p>
+          <h1>Shift cockpit</h1>
+          <p className="subtitle">
+            Accept jobs, navigate between customer and partner stops, update proof-of-service, and
+            track earnings in one screen built for mobile portrait mode.
+          </p>
+        </div>
+        <Link to="/" className="home-pill secondary small-pill">
+          Home
+        </Link>
+      </header>
+
+      <section className="status-bar">
+        <div>
+          <p className="eyebrow">Availability</p>
+          <h2>{isOnline ? 'Online & discoverable' : 'Offline'}</h2>
+          <p>{isOnline ? 'You can receive new LaundryDash requests.' : 'You will not get jobs.'}</p>
+        </div>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={isOnline}
+            onChange={() => setIsOnline((prev) => !prev)}
+          />
+          <span className="slider" />
+        </label>
+      </section>
+
+      {incomingRequest && (
+        <section className="incoming-card">
+          <div className="incoming-top">
+            <p className="eyebrow">New request • {requestTimer}s left</p>
+            <strong>{incomingRequest.id}</strong>
+          </div>
+          <h3>
+            {incomingRequest.customer} · {incomingRequest.service}
+          </h3>
+          <div className="route-row">
+            <div>
+              <p className="label">Pickup</p>
+              <p>{incomingRequest.pickup}</p>
+            </div>
+            <div>
+              <p className="label">Drop-off</p>
+              <p>{incomingRequest.dropoff}</p>
+            </div>
+          </div>
+          <div className="badge-row">
+            <span>{incomingRequest.distance} km</span>
+            <span>${incomingRequest.payout.toFixed(2)}</span>
+            <span>{incomingRequest.eta}</span>
+          </div>
+          <div className="incoming-actions">
+            <button type="button" className="ghost" onClick={handleRejectRequest}>
+              Reject
+            </button>
+            <button type="button" className="primary-action" onClick={handleAcceptRequest}>
+              Accept job
+            </button>
+          </div>
+        </section>
+      )}
+
+      <nav className="driver-tabs">
+        {['active', 'jobs', 'dashboard'].map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className={activeTab === tab ? 'tab active' : 'tab'}
+            onClick={() => setActiveTab(tab as typeof activeTab)}
+          >
+            {tab === 'active' && 'Active job'}
+            {tab === 'jobs' && 'Job board'}
+            {tab === 'dashboard' && 'Dashboard'}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === 'active' && (
+        <section className="panel">
+          <div className="job-card">
+            <div className="job-top">
+              <div>
+                <p className="eyebrow">Active job</p>
+                <h3>{initialActiveJob.id}</h3>
+              </div>
+              <span className="pill">{activeJobStatus.label}</span>
+            </div>
+            <p className="customer-line">
+              {initialActiveJob.customer} · {initialActiveJob.bags} bags
+            </p>
+            <p className="label">Pickup</p>
+            <p>{initialActiveJob.pickup}</p>
+            <p className="label">Laundry Partner</p>
+            <p>{initialActiveJob.partner}</p>
+            <p className="label">Drop-off</p>
+            <p>{initialActiveJob.dropoff}</p>
+            <div className="badge-row compact">
+              <span>{initialActiveJob.service}</span>
+              <span>{initialActiveJob.eta}</span>
+              <span>${initialActiveJob.payout.toFixed(2)}</span>
+            </div>
+            {initialActiveJob.notes && <p className="note">Note: {initialActiveJob.notes}</p>}
+          </div>
+
+          <div className="timeline">
+            {statusFlow.map((status, index) => (
+              <div key={status.key} className="timeline-item">
+                <div className={index <= statusIndex ? 'dot active' : 'dot'} />
+                <div>
+                  <p className="timeline-title">{status.label}</p>
+                  <p className="timeline-detail">{status.detail}</p>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="primary-action full"
+              onClick={handleAdvanceStatus}
+              disabled={statusIndex >= statusFlow.length - 1}
+            >
+              {statusIndex >= statusFlow.length - 1 ? 'Job completed' : 'Advance to next step'}
+            </button>
+          </div>
+
+          <div className="route-card">
+            <p className="eyebrow">Route overview</p>
+            <div className="route-stops">
+              {routeStops.map((stop) => (
+                <div key={stop.label} className="route-stop">
+                  <p className="label">{stop.label}</p>
+                  <p>{stop.detail}</p>
+                  <p className="route-eta">{stop.eta}</p>
+                </div>
+              ))}
+            </div>
+            <button type="button" className="secondary-action">
+              Launch navigation
+            </button>
+          </div>
+
+          <div className="actions-grid">
+            <button type="button" className="ghost">
+              Confirm pickup
+            </button>
+            <button type="button" className="ghost">
+              Contact customer
+            </button>
+            <button type="button" className="ghost">
+              Contact partner
+            </button>
+            <button type="button" className="ghost">
+              Report issue
+            </button>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'jobs' && (
+        <section className="panel">
+          <div className="job-list">
+            {jobList.map((job) => (
+              <article key={job.id} className="job-row">
+                <div>
+                  <p className="eyebrow">{job.id}</p>
+                  <h3>{job.customer}</h3>
+                  <p className="label">Pickup</p>
+                  <p>{job.pickup}</p>
+                  <p className="label">Drop-off</p>
+                  <p>{job.dropoff}</p>
+                </div>
+                <div className="job-meta">
+                  <span className="pill">{job.status}</span>
+                  <p>${job.payout.toFixed(2)}</p>
+                  <p>{job.eta}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="job-list completed">
+            <h3>Completed jobs</h3>
+            {completedJobs.map((job) => (
+              <article key={job.id} className="job-row small">
+                <div>
+                  <p className="eyebrow">{job.id}</p>
+                  <p>{job.customer}</p>
+                </div>
+                <div>
+                  <p>${job.payout.toFixed(2)}</p>
+                  <p className="label">{job.eta}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'dashboard' && (
+        <section className="panel dashboard">
+          <div className="metrics">
+            <div className="metric-card">
+              <p className="label">Total earnings (today)</p>
+              <h2>$62.90</h2>
+              <p className="pill subtle">+12% vs yesterday</p>
+            </div>
+            <div className="metric-card">
+              <p className="label">Jobs completed</p>
+              <h2>6</h2>
+              <p className="pill subtle">2 queued</p>
+            </div>
+            <div className="metric-card">
+              <p className="label">Acceptance rate</p>
+              <h2>94%</h2>
+              <p className="pill subtle">Target ≥ 85%</p>
+            </div>
+          </div>
+
+          <div className="alert-card">
+            <p className="eyebrow">Surge intel</p>
+            <h3>Punggol · 1.3x payouts</h3>
+            <p>Spikes from 17:00 – 21:00. Suggested staging: Waterway Point taxi stand.</p>
+            <button type="button" className="secondary-action">
+              Navigate there
+            </button>
+          </div>
+
+          <div className="history">
+            <h3>Today&apos;s log</h3>
+            <ul>
+              <li>
+                12:40 · LD-2380 · Delivered garments · +$28.80
+              </li>
+              <li>11:05 · Surge alert triggered for Bukit Timah</li>
+              <li>09:15 · LD-2379 · Picked up from River Valley</li>
+            </ul>
+          </div>
+        </section>
+      )}
+    </main>
+  );
+};
+
+export default DriverApp;

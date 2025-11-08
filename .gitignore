@@ -1,0 +1,6 @@
+.DS_Store
+node_modules
+dist
+laundrydash-app/node_modules
+laundrydash-app/dist
+pdf/
