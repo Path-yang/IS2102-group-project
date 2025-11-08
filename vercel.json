@@ -1,21 +1,12 @@
 {
   "version": 2,
-  "builds": [
+  "installCommand": "cd laundrydash-app && npm install",
+  "buildCommand": "cd laundrydash-app && npm run build",
+  "outputDirectory": "laundrydash-app/dist",
+  "rewrites": [
     {
-      "src": "laundrydash-app/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
