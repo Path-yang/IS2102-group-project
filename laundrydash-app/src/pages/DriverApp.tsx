@@ -682,6 +682,17 @@ const DriverApp = () => {
                               </div>
                             );
                           })}
+                          {/* Show dots indicator if there are more steps after next */}
+                          {jobStageIndex + 2 < flow.length && (
+                            <div className="timeline-item compact">
+                              <div className="dot-indicator">⋮</div>
+                              <div>
+                                <p className="timeline-detail" style={{ fontStyle: 'italic', opacity: 0.6 }}>
+                                  {flow.length - jobStageIndex - 2} more step{flow.length - jobStageIndex - 2 > 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="next-action">
                           <button

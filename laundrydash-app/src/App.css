@@ -386,6 +386,18 @@ main {
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
 
+.dot-indicator {
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #98a2b3;
+  font-size: 20px;
+  line-height: 1;
+  margin-top: 0.35rem;
+}
+
 .timeline-title {
   font-weight: 600;
   margin: 0;
