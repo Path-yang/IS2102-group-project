@@ -237,7 +237,7 @@ const DriverApp = () => {
   // Toast notification helper
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 5000);
   };
 
   // Simulate location validation (Step 2.1)
