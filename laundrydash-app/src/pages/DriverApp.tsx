@@ -664,15 +664,24 @@ const DriverApp = () => {
                         </div>
 
                         <div className="timeline compact">
-                          {flow.map((status, statusIndex) => (
-                            <div key={status.key} className="timeline-item compact">
-                              <div className={statusIndex <= jobStageIndex ? 'dot active' : 'dot'} />
-                              <div>
-                                <p className="timeline-title">{status.label}</p>
-                                <p className="timeline-detail">{status.detail}</p>
+                          {flow.map((status, statusIndex) => {
+                            // Show only current and next step
+                            const isCurrent = statusIndex === jobStageIndex;
+                            const isNext = statusIndex === jobStageIndex + 1;
+                            const shouldShow = isCurrent || isNext;
+                            
+                            if (!shouldShow) return null;
+                            
+                            return (
+                              <div key={status.key} className="timeline-item compact">
+                                <div className={statusIndex <= jobStageIndex ? 'dot active' : 'dot'} />
+                                <div>
+                                  <p className="timeline-title">{status.label}</p>
+                                  <p className="timeline-detail">{status.detail}</p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                         <div className="next-action">
                           <button
