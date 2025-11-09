@@ -214,6 +214,8 @@ const DriverApp = () => {
   const [completedJobs, setCompletedJobs] = useState<Job[]>(completedSeed);
   const [requestTimer, setRequestTimer] = useState(30);
   const [expandedJobIds, setExpandedJobIds] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'active', label: 'Active jobs' },
@@ -232,6 +234,115 @@ const DriverApp = () => {
     return () => clearInterval(interval);
   }, [incomingRequest, requestTimer]);
 
+  // Toast notification helper
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Simulate location validation (Step 2.1)
+  const simulateLocationValidation = async (jobId: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const mockLat = (1.3521 + Math.random() * 0.1).toFixed(6);
+      const mockLng = (103.8198 + Math.random() * 0.1).toFixed(6);
+      
+      console.log(`📍 Step 2.1: Location validation for ${jobId}`);
+      console.log(`   Current GPS: ${mockLat}, ${mockLng}`);
+      console.log(`   Accuracy: ${(10 + Math.random() * 20).toFixed(1)}m`);
+      console.log(`   ✅ Within required radius`);
+      
+      setTimeout(() => {
+        showToast('📍 Location verified', 'info');
+        resolve(true);
+      }, 800);
+    });
+  };
+
+  // Simulate notifications (Step 3.2)
+  const simulateNotifications = (jobId: string, statusKey: StatusKey) => {
+    const job = activeJobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    const notifications: Record<string, string[]> = {
+      'enRoutePickup': [
+        `📱 SMS to ${job.customer}: "Your driver is on the way!"`,
+        `📱 Alert to ${job.partner}: "Driver en route to pickup"`
+      ],
+      'pickedUp': [
+        `📱 SMS to ${job.customer}: "Your laundry has been picked up"`,
+        `📱 Alert to ${job.partner}: "Incoming delivery - ${job.bags} bags"`
+      ],
+      'atPartner': [
+        `📱 SMS to ${job.customer}: "Your laundry is being processed at ${job.partner}"`,
+      ],
+      'returning': [
+        `📱 SMS to ${job.customer}: "Your clean laundry is on the way back!"`,
+      ],
+      'delivered': [
+        `📱 SMS to ${job.customer}: "Delivered! Please confirm receipt."`,
+        `📱 Alert to ${job.partner}: "Delivery confirmed for ${jobId}"`
+      ],
+    };
+    
+    const messages = notifications[statusKey] || [];
+    
+    if (messages.length > 0) {
+      console.log('📤 Step 3.2: Notifications sent:');
+      messages.forEach(msg => console.log(`   ${msg}`));
+      showToast(`📤 ${messages.length} notification${messages.length > 1 ? 's' : ''} sent`, 'info');
+    }
+  };
+
+  // Simulate navigation (Step 4)
+  const simulateNavigation = (jobId: string, statusKey: StatusKey) => {
+    const job = activeJobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    let destination = '';
+    let destinationName = '';
+    
+    switch (statusKey) {
+      case 'enRoutePickup':
+      case 'accepted':
+        destination = job.pickup;
+        destinationName = 'Customer Pickup';
+        break;
+      case 'pickedUp':
+        destination = job.partner;
+        destinationName = 'Laundry Partner';
+        break;
+      case 'returning':
+      case 'atPartner':
+        destination = job.dropoff;
+        destinationName = 'Customer Drop-off';
+        break;
+      default:
+        destination = job.pickup;
+        destinationName = 'Pickup Location';
+    }
+    
+    console.log(`🗺️ Step 4: Navigation started`);
+    console.log(`   Destination: ${destinationName}`);
+    console.log(`   Address: ${destination}`);
+    
+    const encodedDestination = encodeURIComponent(destination);
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}`;
+    window.open(mapsUrl, '_blank');
+    
+    showToast(`🗺️ Navigating to ${destinationName}`, 'success');
+  };
+
+  // Simulate photo capture
+  const simulatePhotoCapture = (jobId: string, photoType: 'pickup' | 'delivery') => {
+    console.log(`📸 Photo captured:`);
+    console.log(`   Job: ${jobId}`);
+    console.log(`   Type: ${photoType}`);
+    console.log(`   Timestamp: ${new Date().toISOString()}`);
+    console.log(`   Photo URL: simulated-${jobId}-${photoType}.jpg`);
+    
+    showToast(`📸 ${photoType === 'pickup' ? 'Pickup' : 'Delivery'} photo captured`, 'success');
+  };
+
   const toggleJobExpansion = (jobId: string) => {
     setExpandedJobIds((prev) => {
       if (prev.includes(jobId)) {
@@ -241,36 +352,110 @@ const DriverApp = () => {
     });
   };
 
-  const handleAdvanceStatusForJob = (jobId: string) => {
+  const handleAdvanceStatusForJob = async (jobId: string) => {
     const job = activeJobs.find((j) => j.id === jobId);
     if (!job) return;
     const flow = statusFlows[job.direction];
+    const currentStage = jobStatusMap[jobId] ?? 0;
+    const nextStatus = flow[currentStage + 1];
+    
+    if (!nextStatus) return;
 
-    setJobStatusMap((prev) => {
-      const currentStage = prev[jobId] ?? 0;
-      if (currentStage >= flow.length - 1) {
-        return prev;
+    setIsUpdating(true);
+
+    try {
+      console.log('\n🔄 ========== STATUS UPDATE FLOW ==========');
+      console.log(`Job ID: ${jobId}`);
+      console.log(`Current Status: ${flow[currentStage].label}`);
+      console.log(`Next Status: ${nextStatus.label}`);
+      
+      // Step 2.1: Validate location
+      showToast('⏳ Validating location...', 'info');
+      const isLocationValid = await simulateLocationValidation(jobId);
+      
+      if (!isLocationValid) {
+        showToast('❌ Location validation failed', 'error');
+        return;
       }
-      const nextIndex = currentStage + 1;
-      const updated = { ...prev, [jobId]: nextIndex };
-      const nextStatus = flow[nextIndex];
-
-      if (nextStatus.key === 'completed') {
-        setCompletedJobs((prevCompleted) => [
-          {
-            ...job,
-            status: 'Completed',
-            eta: 'Completed just now',
-          },
-          ...prevCompleted,
-        ]);
-        setActiveJobs((prevJobs) => prevJobs.filter((j) => j.id !== jobId));
-        const { [jobId]: _removed, ...rest } = updated;
-        return rest;
+      
+      // Step 2.2: Capture timestamp and GPS
+      const timestamp = new Date();
+      const updateData = {
+        jobId,
+        status: nextStatus.key,
+        timestamp: timestamp.toISOString(),
+        timestampReadable: timestamp.toLocaleString('en-SG', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }),
+        gpsCoords: {
+          lat: (1.3521 + Math.random() * 0.1).toFixed(6),
+          lng: (103.8198 + Math.random() * 0.1).toFixed(6)
+        }
+      };
+      
+      console.log('\n📝 Step 2.2: Timestamp & GPS captured');
+      console.log('💾 Step 3.1: Database update (simulated):');
+      console.log(JSON.stringify(updateData, null, 2));
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Step 3.3: Update state
+      setJobStatusMap((prev) => {
+        const updated = { ...prev, [jobId]: currentStage + 1 };
+        
+        // Step 3.2: Send notifications
+        setTimeout(() => {
+          simulateNotifications(jobId, nextStatus.key);
+        }, 300);
+        
+        // Handle completion
+        if (nextStatus.key === 'completed') {
+          setCompletedJobs((prevCompleted) => [
+            {
+              ...job,
+              status: 'Completed',
+              eta: `Completed ${timestamp.toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}`,
+            },
+            ...prevCompleted,
+          ]);
+          setActiveJobs((prevJobs) => prevJobs.filter((j) => j.id !== jobId));
+          const { [jobId]: _removed, ...rest } = updated;
+          showToast(`✅ Job ${jobId} completed! +$${job.payout.toFixed(2)}`, 'success');
+          console.log('✅ ========== FLOW COMPLETE ==========\n');
+          return rest;
+        }
+        
+        return updated;
+      });
+      
+      // Step 4.1: Show success
+      showToast(`✅ Status updated to: ${nextStatus.label}`, 'success');
+      
+      // Step 4: Auto-navigate prompt
+      if (nextStatus.key === 'pickedUp' || nextStatus.key === 'returning') {
+        setTimeout(() => {
+          const dest = nextStatus.key === 'pickedUp' ? 'laundry partner' : 'customer';
+          const shouldNavigate = window.confirm(`🗺️ Ready to navigate to ${dest}?`);
+          if (shouldNavigate) {
+            simulateNavigation(jobId, nextStatus.key);
+          }
+        }, 1500);
       }
-
-      return updated;
-    });
+      
+      console.log('✅ ========== FLOW COMPLETE ==========\n');
+      
+    } catch (error) {
+      console.error('❌ Status update failed:', error);
+      showToast('❌ Failed to update status. Please try again.', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleAcceptRequest = () => {
@@ -494,10 +679,40 @@ const DriverApp = () => {
                             type="button"
                             className="primary-action"
                             onClick={() => handleAdvanceStatusForJob(job.id)}
-                            disabled={isCurrentAdvanceDisabled}
+                            disabled={isCurrentAdvanceDisabled || isUpdating}
                           >
-                            {nextStepLabel}
+                            {isUpdating ? '⏳ Updating...' : nextStepLabel}
                           </button>
+                          
+                          {/* Photo capture buttons */}
+                          {(jobStatus.key === 'enRoutePickup' || jobStatus.key === 'pickedUp') && (
+                            <button 
+                              type="button" 
+                              className="secondary-action"
+                              onClick={() => simulatePhotoCapture(job.id, 'pickup')}
+                            >
+                              📸 Pickup proof
+                            </button>
+                          )}
+                          
+                          {(jobStatus.key === 'returning' || jobStatus.key === 'delivered') && (
+                            <button 
+                              type="button" 
+                              className="secondary-action"
+                              onClick={() => simulatePhotoCapture(job.id, 'delivery')}
+                            >
+                              📸 Delivery proof
+                            </button>
+                          )}
+                          
+                          <button 
+                            type="button" 
+                            className="ghost"
+                            onClick={() => simulateNavigation(job.id, jobStatus.key)}
+                          >
+                            🗺️ Navigate now
+                          </button>
+                          
                           <p>Drivers see the next required step here.</p>
                         </div>
 
@@ -654,6 +869,13 @@ const DriverApp = () => {
               referrerPolicy="no-referrer-when-downgrade"
             />
           </div>
+        </div>
+      )}
+      
+      {/* Toast notification */}
+      {toast && (
+        <div className={`toast ${toast.type}`}>
+          {toast.message}
         </div>
       )}
     </main>
