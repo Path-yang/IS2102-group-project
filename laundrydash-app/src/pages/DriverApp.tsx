@@ -234,10 +234,12 @@ const DriverApp = () => {
     return () => clearInterval(interval);
   }, [incomingRequest, requestTimer]);
 
-  // Toast notification helper
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 10000); // 10 seconds
+  // Toast notification helper with delay support
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', delay: number = 0) => {
+    setTimeout(() => {
+      setToast({ message, type });
+      setTimeout(() => setToast(null), 3000); // 3 seconds display time
+    }, delay);
   };
 
   // Simulate location validation (Step 2.1)
@@ -252,7 +254,6 @@ const DriverApp = () => {
       console.log(`   ✅ Within required radius`);
       
       setTimeout(() => {
-        showToast('📍 Location verified', 'info');
         resolve(true);
       }, 800);
     });
@@ -289,8 +290,9 @@ const DriverApp = () => {
     if (messages.length > 0) {
       console.log('📤 Step 3.2: Notifications sent:');
       messages.forEach(msg => console.log(`   ${msg}`));
-      showToast(`📤 ${messages.length} notification${messages.length > 1 ? 's' : ''} sent`, 'info');
+      return messages.length; // Return count instead of showing toast
     }
+    return 0;
   };
 
   // Simulate navigation (Step 4)
@@ -370,13 +372,16 @@ const DriverApp = () => {
       console.log(`Next Status: ${nextStatus.label}`);
       
       // Step 2.1: Validate location
-      showToast('⏳ Validating location...', 'info');
+      showToast('⏳ Validating location...', 'info', 0);
       const isLocationValid = await simulateLocationValidation(jobId);
       
       if (!isLocationValid) {
-        showToast('❌ Location validation failed', 'error');
+        showToast('❌ Location validation failed', 'error', 3000);
         return;
       }
+      
+      // Show location verified toast after first toast finishes
+      showToast('📍 Location verified', 'info', 3000);
       
       // Step 2.2: Capture timestamp and GPS
       const timestamp = new Date();
@@ -409,10 +414,11 @@ const DriverApp = () => {
       setJobStatusMap((prev) => {
         const updated = { ...prev, [jobId]: currentStage + 1 };
         
-        // Step 3.2: Send notifications
-        setTimeout(() => {
-          simulateNotifications(jobId, nextStatus.key);
-        }, 300);
+        // Step 3.2: Send notifications (show toast with delay)
+        const notificationCount = simulateNotifications(jobId, nextStatus.key) || 0;
+        if (notificationCount > 0) {
+          showToast(`📤 ${notificationCount} notification${notificationCount > 1 ? 's' : ''} sent`, 'info', 6000);
+        }
         
         // Handle completion
         if (nextStatus.key === 'completed') {
@@ -426,7 +432,7 @@ const DriverApp = () => {
           ]);
           setActiveJobs((prevJobs) => prevJobs.filter((j) => j.id !== jobId));
           const { [jobId]: _removed, ...rest } = updated;
-          showToast(`✅ Job ${jobId} completed! +$${job.payout.toFixed(2)}`, 'success');
+          showToast(`✅ Job ${jobId} completed! +$${job.payout.toFixed(2)}`, 'success', 9000);
           console.log('✅ ========== FLOW COMPLETE ==========\n');
           return rest;
         }
@@ -434,8 +440,8 @@ const DriverApp = () => {
         return updated;
       });
       
-      // Step 4.1: Show success
-      showToast(`✅ Status updated to: ${nextStatus.label}`, 'success');
+      // Step 4.1: Show success (with delay after notifications)
+      showToast(`✅ Status updated to: ${nextStatus.label}`, 'success', 9000);
       
       // Step 4: Auto-navigate prompt
       if (nextStatus.key === 'pickedUp' || nextStatus.key === 'returning') {
@@ -445,7 +451,7 @@ const DriverApp = () => {
           if (shouldNavigate) {
             simulateNavigation(jobId, nextStatus.key);
           }
-        }, 1500);
+        }, 12000); // Show after the success toast
       }
       
       console.log('✅ ========== FLOW COMPLETE ==========\n');
