@@ -238,7 +238,7 @@ const DriverApp = () => {
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', delay: number = 0) => {
     setTimeout(() => {
       setToast({ message, type });
-      setTimeout(() => setToast(null), 3000); // 3 seconds display time
+      setTimeout(() => setToast(null), 2000); // 2 seconds display time
     }, delay);
   };
 
@@ -376,12 +376,12 @@ const DriverApp = () => {
       const isLocationValid = await simulateLocationValidation(jobId);
       
       if (!isLocationValid) {
-        showToast('❌ Location validation failed', 'error', 3000);
+        showToast('❌ Location validation failed', 'error', 2000);
         return;
       }
       
       // Show location verified toast after first toast finishes
-      showToast('📍 Location verified', 'info', 3000);
+      showToast('📍 Location verified', 'info', 2000);
       
       // Step 2.2: Capture timestamp and GPS
       const timestamp = new Date();
@@ -417,7 +417,7 @@ const DriverApp = () => {
         // Step 3.2: Send notifications (show toast with delay)
         const notificationCount = simulateNotifications(jobId, nextStatus.key) || 0;
         if (notificationCount > 0) {
-          showToast(`📤 ${notificationCount} notification${notificationCount > 1 ? 's' : ''} sent`, 'info', 6000);
+          showToast(`📤 ${notificationCount} notification${notificationCount > 1 ? 's' : ''} sent`, 'info', 4000);
         }
         
         // Handle completion
@@ -432,7 +432,7 @@ const DriverApp = () => {
           ]);
           setActiveJobs((prevJobs) => prevJobs.filter((j) => j.id !== jobId));
           const { [jobId]: _removed, ...rest } = updated;
-          showToast(`✅ Job ${jobId} completed! +$${job.payout.toFixed(2)}`, 'success', 9000);
+          showToast(`✅ Job ${jobId} completed! +$${job.payout.toFixed(2)}`, 'success', 6000);
           console.log('✅ ========== FLOW COMPLETE ==========\n');
           return rest;
         }
@@ -441,7 +441,7 @@ const DriverApp = () => {
       });
       
       // Step 4.1: Show success (with delay after notifications)
-      showToast(`✅ Status updated to: ${nextStatus.label}`, 'success', 9000);
+      showToast(`✅ Status updated to: ${nextStatus.label}`, 'success', 6000);
       
       // Step 4: Auto-navigate prompt
       if (nextStatus.key === 'pickedUp' || nextStatus.key === 'returning') {
@@ -451,7 +451,7 @@ const DriverApp = () => {
           if (shouldNavigate) {
             simulateNavigation(jobId, nextStatus.key);
           }
-        }, 12000); // Show after the success toast
+        }, 8000); // Show after the success toast
       }
       
       console.log('✅ ========== FLOW COMPLETE ==========\n');
