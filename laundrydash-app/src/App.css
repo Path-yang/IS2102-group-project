@@ -1594,6 +1594,25 @@ main {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   max-width: 90%;
   text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+  opacity: 1;
 }
 
 .toast.success {

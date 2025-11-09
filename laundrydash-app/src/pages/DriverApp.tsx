@@ -237,7 +237,7 @@ const DriverApp = () => {
   // Toast notification helper
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 8000);
+    setTimeout(() => setToast(null), 10000); // 10 seconds
   };
 
   // Simulate location validation (Step 2.1)
@@ -895,7 +895,15 @@ const DriverApp = () => {
       {/* Toast notification */}
       {toast && (
         <div className={`toast ${toast.type}`}>
-          {toast.message}
+          <span>{toast.message}</span>
+          <button 
+            type="button" 
+            className="toast-close"
+            onClick={() => setToast(null)}
+            aria-label="Close notification"
+          >
+            ✕
+          </button>
         </div>
       )}
     </main>
