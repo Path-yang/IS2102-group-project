@@ -1579,16 +1579,9 @@ main {
 }
 
 /* Toast notifications */
-.toast-container {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  pointer-events: none;
-}
-
 .toast {
   position: fixed;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   padding: 12px 24px;
@@ -1604,8 +1597,6 @@ main {
   display: flex;
   align-items: center;
   gap: 12px;
-  pointer-events: auto;
-  transition: bottom 0.3s ease;
 }
 
 .toast-close {

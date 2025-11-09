@@ -214,9 +214,8 @@ const DriverApp = () => {
   const [completedJobs, setCompletedJobs] = useState<Job[]>(completedSeed);
   const [requestTimer, setRequestTimer] = useState(30);
   const [expandedJobIds, setExpandedJobIds] = useState<string[]>([]);
-  const [toastQueue, setToastQueue] = useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [toastIdCounter, setToastIdCounter] = useState(0);
 
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'active', label: 'Active jobs' },
@@ -237,12 +236,8 @@ const DriverApp = () => {
 
   // Toast notification helper
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = toastIdCounter;
-    setToastIdCounter(prev => prev + 1);
-    setToastQueue((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToastQueue((prev) => prev.filter((toast) => toast.id !== id));
-    }, 5000); // 5 seconds each
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 10000); // 10 seconds
   };
 
   // Simulate location validation (Step 2.1)
@@ -897,22 +892,20 @@ const DriverApp = () => {
         </div>
       )}
       
-      {/* Toast notifications */}
-      <div className="toast-container">
-        {toastQueue.map((toast, index) => (
-          <div key={toast.id} className={`toast ${toast.type}`} style={{ bottom: `${80 + index * 70}px` }}>
-            <span>{toast.message}</span>
-            <button 
-              type="button" 
-              className="toast-close"
-              onClick={() => setToastQueue((prev) => prev.filter((t) => t.id !== toast.id))}
-              aria-label="Close notification"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
+      {/* Toast notification */}
+      {toast && (
+        <div className={`toast ${toast.type}`}>
+          <span>{toast.message}</span>
+          <button 
+            type="button" 
+            className="toast-close"
+            onClick={() => setToast(null)}
+            aria-label="Close notification"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </main>
   );
 };
