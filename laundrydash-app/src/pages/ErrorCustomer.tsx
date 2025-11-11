@@ -6,6 +6,7 @@ const ErrorCustomer = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
+  const [showCapacityModal, setShowCapacityModal] = useState(false);
 
   const handleShowDiscountError = () => {
     setShowErrorModal(true);
@@ -17,6 +18,10 @@ const ErrorCustomer = () => {
 
   const handleShowFundsError = () => {
     setShowFundsModal(true);
+  };
+
+  const handleShowCapacityError = () => {
+    setShowCapacityModal(true);
   };
 
   const handleGoHome = () => {
@@ -71,6 +76,14 @@ const ErrorCustomer = () => {
               onClick={handleShowFundsError}
             >
               Insufficient Funds
+            </button>
+
+            <button
+              type="button"
+              className="secondary-action full error-trigger"
+              onClick={handleShowCapacityError}
+            >
+              Capacity Full
             </button>
           </div>
         </div>
@@ -140,6 +153,30 @@ const ErrorCustomer = () => {
                 type="button"
                 className="primary-action full"
                 onClick={() => setShowFundsModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Capacity Full Modal */}
+      {showCapacityModal && (
+        <div className="modal-overlay" onClick={() => setShowCapacityModal(false)}>
+          <div className="modal-content error-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header error-header">
+              <span className="error-icon">📦</span>
+              <h2>Capacity Full at Laundry Partner</h2>
+            </div>
+            <div className="modal-body">
+              <p>We're currently at full capacity. Please try placing your order at a different time or select another laundry partner.</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="primary-action full"
+                onClick={() => setShowCapacityModal(false)}
               >
                 Close
               </button>
