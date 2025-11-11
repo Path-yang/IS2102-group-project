@@ -34,7 +34,7 @@ const statusFlows: Record<Direction, Array<{ key: StatusKey; label: string; deta
     { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
     { key: 'enRoutePickup', label: 'En Route to Customer', detail: 'Navigating to pickup location' },
     { key: 'pickedUp', label: 'Picked Up', detail: 'Laundry secured with photo proof' },
-    { key: 'atPartner', label: 'Delivered to Partner', detail: 'Drop-off at laundry partner' },
+    { key: 'atPartner', label: 'Dropped Off at Partner', detail: 'Laundry delivered with photo proof' },
     { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
   ],
   toCustomer: [
@@ -52,7 +52,7 @@ const nextActionCopy: Record<StatusKey, string> = {
   accepted: 'Start route',
   enRoutePickup: 'Arrived at pickup',
   pickedUp: 'Confirm pickup',
-  atPartner: 'Handle handoff',
+  atPartner: 'Confirm drop-off',
   returning: 'Return to customer',
   delivered: 'Confirm delivery',
   completed: 'Complete job',
@@ -518,15 +518,22 @@ const DriverApp = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Check if photo is required for this status
-      const requiresPhoto = nextStatus.key === 'pickedUp' || nextStatus.key === 'delivered';
+      const requiresPhoto = nextStatus.key === 'pickedUp' || nextStatus.key === 'atPartner' || nextStatus.key === 'delivered';
 
       if (requiresPhoto) {
         // Store pending status update and open camera
         setPendingStatusUpdate({ jobId, nextStatus });
         setIsUpdating(false);
 
-        // Determine photo type
-        const photoType = nextStatus.key === 'pickedUp' ? 'pickup' : 'delivery';
+        // Determine photo type based on the status
+        let photoType: 'pickup' | 'delivery' = 'pickup';
+        if (nextStatus.key === 'pickedUp') {
+          photoType = 'pickup';
+        } else if (nextStatus.key === 'atPartner') {
+          photoType = 'delivery'; // Drop-off at partner
+        } else if (nextStatus.key === 'delivered') {
+          photoType = 'delivery';
+        }
 
         // Wait a bit then open camera
         setTimeout(() => {
