@@ -138,6 +138,12 @@ main {
   align-items: flex-start;
 }
 
+.status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .status-bar {
   display: flex;
   justify-content: space-between;
