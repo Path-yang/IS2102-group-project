@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+// Driver App Component
 type StatusKey =
   | 'accepted'
   | 'enRoutePickup'
@@ -239,10 +240,10 @@ const DriverApp = () => {
   }, [incomingRequest, requestTimer]);
 
   // Toast notification helper with delay support
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', delay: number = 0) => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', delay: number = 0, duration: number = 2000) => {
     setTimeout(() => {
       setToast({ message, type });
-      setTimeout(() => setToast(null), 2000); // 2 seconds display time
+      setTimeout(() => setToast(null), duration); // Display time in ms
     }, delay);
   };
 
@@ -354,7 +355,7 @@ const DriverApp = () => {
     console.log(`   Photo URL: simulated-${cameraJobId}-${cameraPhotoType}.jpg`);
 
     setShowCamera(false);
-    showToast(`📸 ${cameraPhotoType === 'pickup' ? 'Pickup' : 'Delivery'} photo captured`, 'success');
+    showToast(`📸 ${cameraPhotoType === 'pickup' ? 'Pickup' : 'Delivery'} photo captured`, 'success', 0, 3000);
 
     // If there's a pending status update, complete it now
     if (pendingStatusUpdate) {
@@ -478,17 +479,17 @@ const DriverApp = () => {
       console.log(`Next Status: ${nextStatus.label}`);
 
       // Step 2.1: Validate location
-      showToast('⏳ Validating location...', 'info', 0);
+      showToast('⏳ Validating location...', 'info', 0, 3000);
       const isLocationValid = await simulateLocationValidation(jobId);
 
       if (!isLocationValid) {
-        showToast('❌ Location validation failed', 'error', 2000);
+        showToast('❌ Location validation failed', 'error', 2000, 3000);
         setIsUpdating(false);
         return;
       }
 
       // Show location verified toast
-      showToast('📍 Location verified', 'info', 2000);
+      showToast('📍 Location verified', 'info', 2000, 3000);
 
       // Step 2.2: Capture timestamp and GPS
       const timestamp = new Date();
@@ -1038,9 +1039,14 @@ const DriverApp = () => {
               </button>
             </div>
 
-            <p className="camera-instructions">
-              Tap the button to capture {cameraPhotoType === 'pickup' ? 'pickup' : 'delivery'} proof
-            </p>
+            <div className="camera-instructions">
+              <p>Tap the button to capture {cameraPhotoType === 'pickup' ? 'pickup' : 'delivery'} proof</p>
+              <p className="camera-hint-text">
+                {cameraPhotoType === 'pickup'
+                  ? 'Please capture the customer unit number in the photo'
+                  : 'Please capture the shop front in the photo'}
+              </p>
+            </div>
           </div>
         </div>
       )}

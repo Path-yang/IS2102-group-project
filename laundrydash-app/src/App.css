@@ -1650,15 +1650,11 @@ main {
 
 /* Exception Simulator */
 .exception-simulator {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 20%, rgba(255,255,255,1) 100%);
-  padding: 20px 16px 16px;
+  position: relative;
+  background: #f9fafb;
+  padding: 20px 16px;
   border-top: 1px solid #e5e7eb;
-  z-index: 100;
-  backdrop-filter: blur(8px);
+  margin-top: 2rem;
 }
 
 .exception-label {
@@ -1854,6 +1850,16 @@ main {
   padding: 0 1rem 1.5rem;
   background: rgba(0, 0, 0, 0.9);
   font-size: 0.95rem;
+}
+
+.camera-instructions p {
+  margin: 0.5rem 0;
+}
+
+.camera-hint-text {
+  font-size: 0.85rem !important;
+  color: #aaa !important;
+  font-style: italic;
 }
 
 /* Error Exception Button - Inline */
