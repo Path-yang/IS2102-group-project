@@ -479,17 +479,17 @@ const DriverApp = () => {
       console.log(`Next Status: ${nextStatus.label}`);
 
       // Step 2.1: Validate location
-      showToast('⏳ Validating location...', 'info', 0, 3000);
+      showToast('⏳ Validating location...', 'info', 0, 1000);
       const isLocationValid = await simulateLocationValidation(jobId);
 
       if (!isLocationValid) {
-        showToast('❌ Location validation failed', 'error', 2000, 3000);
+        showToast('❌ Location validation failed', 'error', 0, 3000);
         setIsUpdating(false);
         return;
       }
 
-      // Show location verified toast
-      showToast('📍 Location verified', 'info', 2000, 3000);
+      // Show location verified toast after validation completes
+      showToast('📍 Location verified', 'info', 0, 3000);
 
       // Step 2.2: Capture timestamp and GPS
       const timestamp = new Date();
