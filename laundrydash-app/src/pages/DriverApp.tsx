@@ -354,7 +354,7 @@ const DriverApp = () => {
     console.log(`   Photo URL: simulated-${cameraJobId}-${cameraPhotoType}.jpg`);
 
     setShowCamera(false);
-    showToast(`📸 ${cameraPhotoType === 'pickup' ? 'Pickup' : 'Delivery'} photo captured`, 'success');
+    showToast(`📸 ${cameraPhotoType === 'pickup' ? 'Pickup' : 'Delivery'} photo captured`, 'success', 0, 3000);
 
     // If there's a pending status update, complete it now
     if (pendingStatusUpdate) {
