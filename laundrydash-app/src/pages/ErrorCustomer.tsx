@@ -4,9 +4,19 @@ import { useNavigate } from 'react-router-dom';
 const ErrorCustomer = () => {
   const navigate = useNavigate();
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showNetworkModal, setShowNetworkModal] = useState(false);
+  const [showFundsModal, setShowFundsModal] = useState(false);
 
   const handleShowDiscountError = () => {
     setShowErrorModal(true);
+  };
+
+  const handleShowNetworkError = () => {
+    setShowNetworkModal(true);
+  };
+
+  const handleShowFundsError = () => {
+    setShowFundsModal(true);
   };
 
   const handleGoHome = () => {
@@ -46,11 +56,27 @@ const ErrorCustomer = () => {
             >
               Invalid/Expired Discount Code
             </button>
+
+            <button
+              type="button"
+              className="secondary-action full error-trigger"
+              onClick={handleShowNetworkError}
+            >
+              Network Connection
+            </button>
+
+            <button
+              type="button"
+              className="secondary-action full error-trigger"
+              onClick={handleShowFundsError}
+            >
+              Insufficient Funds
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Error Modal */}
+      {/* Discount Error Modal */}
       {showErrorModal && (
         <div className="modal-overlay" onClick={() => setShowErrorModal(false)}>
           <div className="modal-content error-modal" onClick={(e) => e.stopPropagation()}>
@@ -66,6 +92,54 @@ const ErrorCustomer = () => {
                 type="button"
                 className="primary-action full"
                 onClick={() => setShowErrorModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Network Error Modal */}
+      {showNetworkModal && (
+        <div className="modal-overlay" onClick={() => setShowNetworkModal(false)}>
+          <div className="modal-content error-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header error-header">
+              <span className="error-icon">📡</span>
+              <h2>Network Connection Lost</h2>
+            </div>
+            <div className="modal-body">
+              <p>Order draft saved locally</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="primary-action full"
+                onClick={() => setShowNetworkModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Insufficient Funds Modal */}
+      {showFundsModal && (
+        <div className="modal-overlay" onClick={() => setShowFundsModal(false)}>
+          <div className="modal-content error-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header error-header">
+              <span className="error-icon">💳</span>
+              <h2>Insufficient Funds</h2>
+            </div>
+            <div className="modal-body">
+              <p>Please top-up wallet or use an alternative payment method</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="primary-action full"
+                onClick={() => setShowFundsModal(false)}
               >
                 Close
               </button>
