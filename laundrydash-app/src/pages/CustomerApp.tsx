@@ -147,6 +147,7 @@ const CustomerApp = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [activeOrder] = useState<Order | null>(activeOrderSeed);
   const [orderHistory] = useState<Order[]>(orderHistorySeed);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   // Carousel state
   const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
@@ -406,20 +407,30 @@ const CustomerApp = () => {
               </div>
 
               {activeOrder && (
-                <div className="alert-card">
-                  <p className="eyebrow">Active Order</p>
-                  <h3>{activeOrder.id}</h3>
-                  <p>
-                    {activeOrder.service} · {activeOrder.items} items
-                  </p>
+                <>
+                  <div className="alert-card">
+                    <p className="eyebrow">Active Order</p>
+                    <h3>{activeOrder.id}</h3>
+                    <p>
+                      {activeOrder.service} · {activeOrder.items} items
+                    </p>
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      onClick={() => setActiveTab('track')}
+                    >
+                      Track Order
+                    </button>
+                  </div>
+                  
                   <button
                     type="button"
-                    className="secondary-action"
-                    onClick={() => setActiveTab('track')}
+                    className="error-exception-btn-inline"
+                    onClick={() => navigate('/error-customer')}
                   >
-                    Track Order
+                    Error Exception
                   </button>
-                </div>
+                </>
               )}
             </>
           )}
@@ -1075,14 +1086,29 @@ const CustomerApp = () => {
         </section>
       )}
 
-      {/* Error Exception Button - Fixed at bottom */}
-      <button
-        type="button"
-        className="error-exception-btn"
-        onClick={() => navigate('/error-customer')}
-      >
-        Error Exception
-      </button>
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="modal-overlay" onClick={() => setShowErrorModal(false)}>
+          <div className="modal-content error-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header error-header">
+              <span className="error-icon">⚠️</span>
+              <h2>Error</h2>
+            </div>
+            <div className="modal-body">
+              <p>Invalid/Expired Discount Code</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="primary-action full"
+                onClick={() => setShowErrorModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

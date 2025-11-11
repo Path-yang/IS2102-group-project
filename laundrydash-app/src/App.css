@@ -1856,12 +1856,9 @@ main {
   font-size: 0.95rem;
 }
 
-/* Error Exception Button */
-.error-exception-btn {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+/* Error Exception Button - Inline */
+.error-exception-btn-inline {
+  width: 100%;
   padding: 12px 24px;
   background: #dc2626;
   color: white;
@@ -1870,20 +1867,20 @@ main {
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
-  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
   transition: all 0.2s;
+  margin-top: 1rem;
 }
 
-.error-exception-btn:hover {
+.error-exception-btn-inline:hover {
   background: #b91c1c;
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
-.error-exception-btn:active {
-  transform: translateX(-50%) translateY(0);
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+.error-exception-btn-inline:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
 }
 
 /* Error Customer Page */
@@ -1919,4 +1916,103 @@ main {
 
 .error-trigger:hover {
   background: #fee2e2 !important;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+  max-width: 500px;
+  width: 100%;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e4e7ec;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.error-header {
+  background: #fef2f2;
+  border-bottom: 2px solid #fecaca;
+}
+
+.error-header h2 {
+  color: #dc2626;
+}
+
+.error-icon {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-body p {
+  margin: 0;
+  color: #475467;
+  font-size: 1rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e4e7ec;
+  background: #f9fafb;
+}
+
+.modal-footer button {
+  margin: 0;
 }

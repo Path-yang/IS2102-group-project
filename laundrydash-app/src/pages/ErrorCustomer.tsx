@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const ErrorCustomer = () => {
   const navigate = useNavigate();
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const handleShowDiscountError = () => {
-    alert('Invalid/Expired Discount Code');
+    setShowErrorModal(true);
   };
 
   const handleGoHome = () => {
@@ -47,6 +49,30 @@ const ErrorCustomer = () => {
           </div>
         </div>
       </section>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="modal-overlay" onClick={() => setShowErrorModal(false)}>
+          <div className="modal-content error-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header error-header">
+              <span className="error-icon">⚠️</span>
+              <h2>Error</h2>
+            </div>
+            <div className="modal-body">
+              <p>Invalid/Expired Discount Code</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="primary-action full"
+                onClick={() => setShowErrorModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
