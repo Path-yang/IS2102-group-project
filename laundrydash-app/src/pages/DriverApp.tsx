@@ -216,6 +216,10 @@ const DriverApp = () => {
   const [expandedJobIds, setExpandedJobIds] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraJobId, setCameraJobId] = useState<string | null>(null);
+  const [cameraPhotoType, setCameraPhotoType] = useState<'pickup' | 'delivery'>('pickup');
+  const [pendingStatusUpdate, setPendingStatusUpdate] = useState<{ jobId: string; nextStatus: any } | null>(null);
 
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'active', label: 'Active jobs' },
@@ -334,15 +338,72 @@ const DriverApp = () => {
     showToast(`🗺️ Navigating to ${destinationName}`, 'success');
   };
 
-  // Simulate photo capture
-  const simulatePhotoCapture = (jobId: string, photoType: 'pickup' | 'delivery') => {
+  // Open camera for photo capture
+  const openCamera = (jobId: string, photoType: 'pickup' | 'delivery') => {
+    setCameraJobId(jobId);
+    setCameraPhotoType(photoType);
+    setShowCamera(true);
+  };
+
+  // Handle photo captured
+  const handlePhotoCapture = () => {
     console.log(`📸 Photo captured:`);
-    console.log(`   Job: ${jobId}`);
-    console.log(`   Type: ${photoType}`);
+    console.log(`   Job: ${cameraJobId}`);
+    console.log(`   Type: ${cameraPhotoType}`);
     console.log(`   Timestamp: ${new Date().toISOString()}`);
-    console.log(`   Photo URL: simulated-${jobId}-${photoType}.jpg`);
-    
-    showToast(`📸 ${photoType === 'pickup' ? 'Pickup' : 'Delivery'} photo captured`, 'success');
+    console.log(`   Photo URL: simulated-${cameraJobId}-${cameraPhotoType}.jpg`);
+
+    setShowCamera(false);
+    showToast(`📸 ${cameraPhotoType === 'pickup' ? 'Pickup' : 'Delivery'} photo captured`, 'success');
+
+    // If there's a pending status update, complete it now
+    if (pendingStatusUpdate) {
+      completeStatusUpdate(pendingStatusUpdate.jobId, pendingStatusUpdate.nextStatus);
+      setPendingStatusUpdate(null);
+    }
+  };
+
+  // Complete the status update after photo is taken
+  const completeStatusUpdate = (jobId: string, nextStatus: any) => {
+    const job = activeJobs.find((j) => j.id === jobId);
+    if (!job) return;
+
+    const flow = statusFlows[job.direction];
+    const currentStage = jobStatusMap[jobId] ?? 0;
+    const timestamp = new Date();
+
+    setJobStatusMap((prev) => {
+      const updated = { ...prev, [jobId]: currentStage + 1 };
+
+      // Step 3.2: Send notifications
+      const notificationCount = simulateNotifications(jobId, nextStatus.key) || 0;
+      if (notificationCount > 0) {
+        showToast(`📤 ${notificationCount} notification${notificationCount > 1 ? 's' : ''} sent`, 'info', 2000);
+      }
+
+      // Handle completion
+      if (nextStatus.key === 'completed') {
+        setCompletedJobs((prevCompleted) => [
+          {
+            ...job,
+            status: 'Completed',
+            eta: `Completed ${timestamp.toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}`,
+          },
+          ...prevCompleted,
+        ]);
+        setActiveJobs((prevJobs) => prevJobs.filter((j) => j.id !== jobId));
+        const { [jobId]: _removed, ...rest } = updated;
+        showToast(`✅ Job ${jobId} completed! +$${job.payout.toFixed(2)}`, 'success', 4000);
+        console.log('✅ ========== FLOW COMPLETE ==========\n');
+        return rest;
+      }
+
+      return updated;
+    });
+
+    // Show success
+    showToast(`✅ Status updated to: ${nextStatus.label}`, 'success', 4000);
+    console.log('✅ ========== FLOW COMPLETE ==========\n');
   };
 
   // Simulate exception: Driver too far from location
@@ -406,7 +467,7 @@ const DriverApp = () => {
     const flow = statusFlows[job.direction];
     const currentStage = jobStatusMap[jobId] ?? 0;
     const nextStatus = flow[currentStage + 1];
-    
+
     if (!nextStatus) return;
 
     setIsUpdating(true);
@@ -416,19 +477,20 @@ const DriverApp = () => {
       console.log(`Job ID: ${jobId}`);
       console.log(`Current Status: ${flow[currentStage].label}`);
       console.log(`Next Status: ${nextStatus.label}`);
-      
+
       // Step 2.1: Validate location
       showToast('⏳ Validating location...', 'info', 0);
       const isLocationValid = await simulateLocationValidation(jobId);
-      
+
       if (!isLocationValid) {
         showToast('❌ Location validation failed', 'error', 2000);
+        setIsUpdating(false);
         return;
       }
-      
-      // Show location verified toast after first toast finishes
+
+      // Show location verified toast
       showToast('📍 Location verified', 'info', 2000);
-      
+
       // Step 2.2: Capture timestamp and GPS
       const timestamp = new Date();
       const updateData = {
@@ -448,64 +510,38 @@ const DriverApp = () => {
           lng: (103.8198 + Math.random() * 0.1).toFixed(6)
         }
       };
-      
+
       console.log('\n📝 Step 2.2: Timestamp & GPS captured');
       console.log('💾 Step 3.1: Database update (simulated):');
       console.log(JSON.stringify(updateData, null, 2));
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Step 3.3: Update state
-      setJobStatusMap((prev) => {
-        const updated = { ...prev, [jobId]: currentStage + 1 };
-        
-        // Step 3.2: Send notifications (show toast with delay)
-        const notificationCount = simulateNotifications(jobId, nextStatus.key) || 0;
-        if (notificationCount > 0) {
-          showToast(`📤 ${notificationCount} notification${notificationCount > 1 ? 's' : ''} sent`, 'info', 4000);
-        }
-        
-        // Handle completion
-        if (nextStatus.key === 'completed') {
-          setCompletedJobs((prevCompleted) => [
-            {
-              ...job,
-              status: 'Completed',
-              eta: `Completed ${timestamp.toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}`,
-            },
-            ...prevCompleted,
-          ]);
-          setActiveJobs((prevJobs) => prevJobs.filter((j) => j.id !== jobId));
-          const { [jobId]: _removed, ...rest } = updated;
-          showToast(`✅ Job ${jobId} completed! +$${job.payout.toFixed(2)}`, 'success', 6000);
-          console.log('✅ ========== FLOW COMPLETE ==========\n');
-          return rest;
-        }
-        
-        return updated;
-      });
-      
-      // Step 4.1: Show success (with delay after notifications)
-      showToast(`✅ Status updated to: ${nextStatus.label}`, 'success', 6000);
-      
-      // Step 4: Auto-navigate prompt
-      if (nextStatus.key === 'pickedUp' || nextStatus.key === 'returning') {
+
+      // Check if photo is required for this status
+      const requiresPhoto = nextStatus.key === 'pickedUp' || nextStatus.key === 'delivered';
+
+      if (requiresPhoto) {
+        // Store pending status update and open camera
+        setPendingStatusUpdate({ jobId, nextStatus });
+        setIsUpdating(false);
+
+        // Determine photo type
+        const photoType = nextStatus.key === 'pickedUp' ? 'pickup' : 'delivery';
+
+        // Wait a bit then open camera
         setTimeout(() => {
-          const dest = nextStatus.key === 'pickedUp' ? 'laundry partner' : 'customer';
-          const shouldNavigate = window.confirm(`🗺️ Ready to navigate to ${dest}?`);
-          if (shouldNavigate) {
-            simulateNavigation(jobId, nextStatus.key);
-          }
-        }, 8000); // Show after the success toast
+          openCamera(jobId, photoType);
+        }, 2500);
+      } else {
+        // No photo required, complete update immediately
+        completeStatusUpdate(jobId, nextStatus);
+        setIsUpdating(false);
       }
-      
-      console.log('✅ ========== FLOW COMPLETE ==========\n');
-      
+
     } catch (error) {
       console.error('❌ Status update failed:', error);
       showToast('❌ Failed to update status. Please try again.', 'error');
-    } finally {
       setIsUpdating(false);
     }
   };
@@ -755,36 +791,15 @@ const DriverApp = () => {
                           >
                             {isUpdating ? '⏳ Updating...' : nextStepLabel}
                           </button>
-                          
-                          {/* Photo capture buttons */}
-                          {(jobStatus.key === 'enRoutePickup' || jobStatus.key === 'pickedUp') && (
-                            <button 
-                              type="button" 
-                              className="secondary-action"
-                              onClick={() => simulatePhotoCapture(job.id, 'pickup')}
-                            >
-                              📸 Pickup proof
-                            </button>
-                          )}
-                          
-                          {(jobStatus.key === 'returning' || jobStatus.key === 'delivered') && (
-                            <button 
-                              type="button" 
-                              className="secondary-action"
-                              onClick={() => simulatePhotoCapture(job.id, 'delivery')}
-                            >
-                              📸 Delivery proof
-                            </button>
-                          )}
-                          
-                          <button 
-                            type="button" 
+
+                          <button
+                            type="button"
                             className="ghost"
                             onClick={() => simulateNavigation(job.id, jobStatus.key)}
                           >
                             🗺️ Navigate now
                           </button>
-                          
+
                           <p>Drivers see the next required step here.</p>
                         </div>
 
@@ -963,15 +978,15 @@ const DriverApp = () => {
       <div className="exception-simulator">
         <p className="exception-label">⚠️ Simulate Exceptions:</p>
         <div className="exception-buttons">
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="exception-btn"
             onClick={simulateLocationError}
           >
             📍 Location Error
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="exception-btn"
             onClick={simulateOfflineMode}
           >
@@ -979,6 +994,50 @@ const DriverApp = () => {
           </button>
         </div>
       </div>
+
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="camera-modal">
+          <div className="camera-container">
+            <div className="camera-header">
+              <h3>📸 Take {cameraPhotoType === 'pickup' ? 'Pickup' : 'Delivery'} Photo</h3>
+              <button
+                type="button"
+                className="camera-close"
+                onClick={() => {
+                  setShowCamera(false);
+                  setPendingStatusUpdate(null);
+                  setIsUpdating(false);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="camera-viewfinder">
+              <div className="camera-preview">
+                <div className="camera-icon">📷</div>
+                <p>Camera Preview</p>
+                <p className="camera-hint">Mock camera interface</p>
+              </div>
+            </div>
+
+            <div className="camera-controls">
+              <button
+                type="button"
+                className="capture-button"
+                onClick={handlePhotoCapture}
+              >
+                <span className="capture-button-inner" />
+              </button>
+            </div>
+
+            <p className="camera-instructions">
+              Tap the button to capture {cameraPhotoType === 'pickup' ? 'pickup' : 'delivery'} proof
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
