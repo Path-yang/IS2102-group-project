@@ -32,17 +32,17 @@ type TabKey = 'active' | 'requests' | 'jobs' | 'dashboard';
 const statusFlows: Record<Direction, Array<{ key: StatusKey; label: string; detail: string }>> = {
   toPartner: [
     { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
-    { key: 'enRoutePickup', label: 'Going to Customer', detail: 'Navigating to pickup location' },
+    { key: 'enRoutePickup', label: 'Customer → Partner', detail: 'Navigating to pickup location' },
     { key: 'pickedUp', label: 'Picked Up', detail: 'Laundry secured with photo proof' },
-    { key: 'atPartner', label: 'Customer → Partner', detail: 'Laundry delivered with photo proof' },
+    { key: 'atPartner', label: 'At Partner', detail: 'Laundry delivered with photo proof' },
     { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
   ],
   toCustomer: [
     { key: 'accepted', label: 'Accepted', detail: 'Job locked in, prep to move' },
-    { key: 'enRoutePickup', label: 'Going to Partner', detail: 'Heading to collect clean load' },
-    { key: 'atPartner', label: 'Arrived at Partner', detail: 'Ready to collect garments' },
+    { key: 'enRoutePickup', label: 'Partner → Customer', detail: 'Heading to collect clean load' },
+    { key: 'atPartner', label: 'At Partner', detail: 'Ready to collect garments' },
     { key: 'pickedUp', label: 'Collected Laundry', detail: 'Clean garments onboard' },
-    { key: 'returning', label: 'Partner → Customer', detail: 'Navigating to customer drop-off' },
+    { key: 'returning', label: 'Returning to Customer', detail: 'Navigating to customer drop-off' },
     { key: 'delivered', label: 'Delivered', detail: 'Customer confirmed receipt' },
     { key: 'completed', label: 'Completed', detail: 'Job auto-submitted to earnings' },
   ],
