@@ -221,6 +221,7 @@ const DriverApp = () => {
   const [cameraJobId, setCameraJobId] = useState<string | null>(null);
   const [cameraPhotoType, setCameraPhotoType] = useState<'pickup' | 'delivery'>('pickup');
   const [pendingStatusUpdate, setPendingStatusUpdate] = useState<{ jobId: string; nextStatus: any } | null>(null);
+  const [exceptionModal, setExceptionModal] = useState<{ type: 'location' | 'offline' | null; message: string }>({ type: null, message: '' });
 
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'active', label: 'Active jobs' },
@@ -411,18 +412,11 @@ const DriverApp = () => {
     console.log('❌ Exception: Driver too far from expected location');
     console.log('   Expected location: Customer pickup');
     console.log('   Current distance: 1.2 km away');
-    
-    const shouldOverride = window.confirm('⚠️ You are not at the expected location\n\nYou are 1.2 km away from the pickup point.\n\nOptions:\n• Click OK to provide reason for override\n• Click Cancel to retry when closer');
-    
-    if (shouldOverride) {
-      const reason = window.prompt('Please provide reason for location override:', 'Customer requested early pickup');
-      if (reason) {
-        console.log(`   Override reason: ${reason}`);
-        showToast('⚠️ Location override recorded', 'info');
-      }
-    } else {
-      showToast('❌ Update cancelled - Move closer to location', 'error');
-    }
+
+    setExceptionModal({
+      type: 'location',
+      message: 'You are 1.2 km away from the pickup point'
+    });
   };
 
   // Simulate exception: Offline/weak connection
@@ -430,26 +424,39 @@ const DriverApp = () => {
     console.log('📡 Exception: Weak or no internet connection');
     console.log('   Connection status: Offline');
     console.log('   Action: Saving update locally');
-    
-    showToast('📡 No connection - Saving locally', 'info', 0);
-    
-    setTimeout(() => {
-      showToast('💾 Update saved locally', 'success', 2000);
-    }, 2000);
-    
-    setTimeout(() => {
-      showToast('⏳ Pending Sync...', 'info', 4000);
-    }, 4000);
-    
-    setTimeout(() => {
-      console.log('   Connection restored');
-      console.log('   Auto-syncing pending updates...');
-      showToast('✅ Connected - Syncing data', 'success', 6000);
-    }, 6000);
-    
-    setTimeout(() => {
-      showToast('✅ All updates synced successfully', 'success', 8000);
-    }, 8000);
+
+    setExceptionModal({
+      type: 'offline',
+      message: 'Weak or lost locality'
+    });
+  };
+
+  const handleExceptionClose = () => {
+    if (exceptionModal.type === 'offline') {
+      showToast('📡 No connection - Saving locally', 'info', 0);
+
+      setTimeout(() => {
+        showToast('💾 Update saved locally', 'success', 0);
+      }, 2000);
+
+      setTimeout(() => {
+        showToast('⏳ Pending Sync...', 'info', 0);
+      }, 4000);
+
+      setTimeout(() => {
+        console.log('   Connection restored');
+        console.log('   Auto-syncing pending updates...');
+        showToast('✅ Connected - Syncing data', 'success', 0);
+      }, 6000);
+
+      setTimeout(() => {
+        showToast('✅ All updates synced successfully', 'success', 0);
+      }, 8000);
+    } else if (exceptionModal.type === 'location') {
+      showToast('❌ Update cancelled - Move closer to location', 'error');
+    }
+
+    setExceptionModal({ type: null, message: '' });
   };
 
   const toggleJobExpansion = (jobId: string) => {
@@ -1046,6 +1053,30 @@ const DriverApp = () => {
                   ? 'Please capture the customer unit number in the photo'
                   : 'Please capture the shop front in the photo'}
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exception Modal */}
+      {exceptionModal.type && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header error-header">
+              <span className="error-icon">⚠️</span>
+              <h2>{exceptionModal.type === 'location' ? 'Insufficient Funds' : 'Network Connection Lost'}</h2>
+            </div>
+            <div className="modal-body">
+              <p>{exceptionModal.message}</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="primary-action"
+                onClick={handleExceptionClose}
+              >
+                Okay
+              </button>
             </div>
           </div>
         </div>
