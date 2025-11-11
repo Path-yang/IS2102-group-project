@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 type TabKey = 'home' | 'track' | 'orders' | 'profile';
 
@@ -141,6 +141,7 @@ const orderHistorySeed: Order[] = [
 ];
 
 const CustomerApp = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [orderStep, setOrderStep] = useState<OrderFormStep>('service');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -1073,6 +1074,15 @@ const CustomerApp = () => {
           </button>
         </section>
       )}
+
+      {/* Error Exception Button - Fixed at bottom */}
+      <button
+        type="button"
+        className="error-exception-btn"
+        onClick={() => navigate('/error-customer')}
+      >
+        Error Exception
+      </button>
     </main>
   );
 };
