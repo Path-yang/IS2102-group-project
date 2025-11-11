@@ -368,7 +368,6 @@ const DriverApp = () => {
     const job = activeJobs.find((j) => j.id === jobId);
     if (!job) return;
 
-    const flow = statusFlows[job.direction];
     const currentStage = jobStatusMap[jobId] ?? 0;
     const timestamp = new Date();
 
