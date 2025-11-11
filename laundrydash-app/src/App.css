@@ -1852,6 +1852,16 @@ main {
   font-size: 0.95rem;
 }
 
+.camera-instructions p {
+  margin: 0.5rem 0;
+}
+
+.camera-hint-text {
+  font-size: 0.85rem !important;
+  color: #aaa !important;
+  font-style: italic;
+}
+
 /* Error Exception Button - Inline */
 .error-exception-btn-inline {
   width: 100%;

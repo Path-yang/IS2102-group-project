@@ -1038,9 +1038,14 @@ const DriverApp = () => {
               </button>
             </div>
 
-            <p className="camera-instructions">
-              Tap the button to capture {cameraPhotoType === 'pickup' ? 'pickup' : 'delivery'} proof
-            </p>
+            <div className="camera-instructions">
+              <p>Tap the button to capture {cameraPhotoType === 'pickup' ? 'pickup' : 'delivery'} proof</p>
+              <p className="camera-hint-text">
+                {cameraPhotoType === 'pickup'
+                  ? 'Please capture the customer unit number in the photo'
+                  : 'Please capture the shop front in the photo'}
+              </p>
+            </div>
           </div>
         </div>
       )}
