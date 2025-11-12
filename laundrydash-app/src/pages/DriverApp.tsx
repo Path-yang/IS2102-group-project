@@ -407,27 +407,66 @@ const DriverApp = () => {
     console.log('✅ ========== FLOW COMPLETE ==========\n');
   };
 
-  // Simulate exception: Driver too far from location
-  const simulateLocationError = () => {
-    console.log('❌ Exception: Driver too far from expected location');
-    console.log('   Expected location: Customer pickup');
-    console.log('   Current distance: 1.2 km away');
-
+  // Exception 1: Driver not within location radius (Customer)
+  const simulateLocationErrorCustomer = () => {
+    console.log('❌ Exception: Driver not within location radius - Customer');
     setExceptionModal({
       type: 'location',
-      message: 'You are 1.2 km away from the pickup point'
+      message: 'You are not near the customer location.'
     });
   };
 
-  // Simulate exception: Offline/weak connection
-  const simulateOfflineMode = () => {
-    console.log('📡 Exception: Weak or no internet connection');
-    console.log('   Connection status: Offline');
-    console.log('   Action: Saving update locally');
+  // Exception 1: Driver not within location radius (Partner)
+  const simulateLocationErrorPartner = () => {
+    console.log('❌ Exception: Driver not within location radius - Partner');
+    setExceptionModal({
+      type: 'location',
+      message: 'You are not near the partner location.'
+    });
+  };
 
+  // Exception 2: Unable to capture driver's location (Customer)
+  const simulateLocationCaptureErrorCustomer = () => {
+    console.log('❌ Exception: Unable to capture driver\'s location - Customer');
+    setExceptionModal({
+      type: 'location',
+      message: 'Unable to capture location, please manual confirm location by calling the customer/laundry partner'
+    });
+  };
+
+  // Exception 2: Unable to capture driver's location (Partner)
+  const simulateLocationCaptureErrorPartner = () => {
+    console.log('❌ Exception: Unable to capture driver\'s location - Partner');
+    setExceptionModal({
+      type: 'location',
+      message: 'Unable to capture location, please manual confirm location by calling the customer/laundry partner'
+    });
+  };
+
+  // Exception 3: Unable to open navigation
+  const simulateNavigationError = () => {
+    console.log('❌ Exception: Unable to open navigation');
     setExceptionModal({
       type: 'offline',
-      message: 'Weak or lost locality'
+      message: 'Navigation unavailable. Please open third party maps or check GPS settings.'
+    });
+  };
+
+  // Exception 4: Photo not uploaded due to connection error
+  const simulatePhotoUploadError = () => {
+    console.log('❌ Exception: Photo not uploaded due to connection error');
+    setExceptionModal({
+      type: 'offline',
+      message: 'Photo failed to upload, please check internet connection'
+    });
+  };
+
+  // Exception 5: Photo quality too low
+  const simulatePhotoQualityError = () => {
+    console.log('❌ Exception: Photo quality too low');
+    setExceptionModal({
+      type: 'location',
+      message: 'Poor photo quality, please retake'
     });
   };
 
@@ -995,16 +1034,51 @@ const DriverApp = () => {
           <button
             type="button"
             className="exception-btn"
-            onClick={simulateLocationError}
+            onClick={simulateLocationErrorCustomer}
           >
-            📍 Location Error
+            1. Not near customer
           </button>
           <button
             type="button"
             className="exception-btn"
-            onClick={simulateOfflineMode}
+            onClick={simulateLocationErrorPartner}
           >
-            📡 Offline Mode
+            1. Not near partner
+          </button>
+          <button
+            type="button"
+            className="exception-btn"
+            onClick={simulateLocationCaptureErrorCustomer}
+          >
+            2. Can't get location (Cust)
+          </button>
+          <button
+            type="button"
+            className="exception-btn"
+            onClick={simulateLocationCaptureErrorPartner}
+          >
+            2. Can't get location (Part)
+          </button>
+          <button
+            type="button"
+            className="exception-btn"
+            onClick={simulateNavigationError}
+          >
+            3. Can't open navigation
+          </button>
+          <button
+            type="button"
+            className="exception-btn"
+            onClick={simulatePhotoUploadError}
+          >
+            4. Photo upload failed
+          </button>
+          <button
+            type="button"
+            className="exception-btn"
+            onClick={simulatePhotoQualityError}
+          >
+            5. Photo quality low
           </button>
         </div>
       </div>
