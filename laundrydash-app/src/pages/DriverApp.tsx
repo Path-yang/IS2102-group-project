@@ -433,7 +433,7 @@ const DriverApp = () => {
     setExceptionModal({
       type: 'location',
       title: 'Unable to Capture Location',
-      message: 'Unable to capture location, please manual confirm location by calling the customer/laundry partner'
+      message: 'Unable to capture location, please manual confirm location by calling the customer'
     });
   };
 
@@ -443,7 +443,7 @@ const DriverApp = () => {
     setExceptionModal({
       type: 'location',
       title: 'Unable to Capture Location',
-      message: 'Unable to capture location, please manual confirm location by calling the customer/laundry partner'
+      message: 'Unable to capture location, please manual confirm location by calling the laundry partner'
     });
   };
 
