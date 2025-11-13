@@ -221,7 +221,7 @@ const DriverApp = () => {
   const [cameraJobId, setCameraJobId] = useState<string | null>(null);
   const [cameraPhotoType, setCameraPhotoType] = useState<'pickup' | 'delivery'>('pickup');
   const [pendingStatusUpdate, setPendingStatusUpdate] = useState<{ jobId: string; nextStatus: any } | null>(null);
-  const [exceptionModal, setExceptionModal] = useState<{ type: 'location' | 'offline' | null; message: string }>({ type: null, message: '' });
+  const [exceptionModal, setExceptionModal] = useState<{ type: 'location' | 'offline' | null; title: string; message: string }>({ type: null, title: '', message: '' });
 
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'active', label: 'Active jobs' },
@@ -412,6 +412,7 @@ const DriverApp = () => {
     console.log('❌ Exception: Driver not within location radius - Customer');
     setExceptionModal({
       type: 'location',
+      title: 'Location Error',
       message: 'You are not near the customer location.'
     });
   };
@@ -421,6 +422,7 @@ const DriverApp = () => {
     console.log('❌ Exception: Driver not within location radius - Partner');
     setExceptionModal({
       type: 'location',
+      title: 'Location Error',
       message: 'You are not near the partner location.'
     });
   };
@@ -430,6 +432,7 @@ const DriverApp = () => {
     console.log('❌ Exception: Unable to capture driver\'s location - Customer');
     setExceptionModal({
       type: 'location',
+      title: 'Unable to Capture Location',
       message: 'Unable to capture location, please manual confirm location by calling the customer/laundry partner'
     });
   };
@@ -439,6 +442,7 @@ const DriverApp = () => {
     console.log('❌ Exception: Unable to capture driver\'s location - Partner');
     setExceptionModal({
       type: 'location',
+      title: 'Unable to Capture Location',
       message: 'Unable to capture location, please manual confirm location by calling the customer/laundry partner'
     });
   };
@@ -448,6 +452,7 @@ const DriverApp = () => {
     console.log('❌ Exception: Unable to open navigation');
     setExceptionModal({
       type: 'offline',
+      title: 'Navigation Unavailable',
       message: 'Navigation unavailable. Please open third party maps or check GPS settings.'
     });
   };
@@ -457,6 +462,7 @@ const DriverApp = () => {
     console.log('❌ Exception: Photo not uploaded due to connection error');
     setExceptionModal({
       type: 'offline',
+      title: 'Photo Upload Failed',
       message: 'Photo failed to upload, please check internet connection'
     });
   };
@@ -466,6 +472,7 @@ const DriverApp = () => {
     console.log('❌ Exception: Photo quality too low');
     setExceptionModal({
       type: 'location',
+      title: 'Poor Photo Quality',
       message: 'Poor photo quality, please retake'
     });
   };
@@ -495,7 +502,7 @@ const DriverApp = () => {
       showToast('❌ Update cancelled - Move closer to location', 'error');
     }
 
-    setExceptionModal({ type: null, message: '' });
+    setExceptionModal({ type: null, title: '', message: '' });
   };
 
   const toggleJobExpansion = (jobId: string) => {
@@ -1138,7 +1145,7 @@ const DriverApp = () => {
           <div className="modal-content">
             <div className="modal-header error-header">
               <span className="error-icon">⚠️</span>
-              <h2>{exceptionModal.type === 'location' ? 'Insufficient Funds' : 'Network Connection Lost'}</h2>
+              <h2>{exceptionModal.title}</h2>
             </div>
             <div className="modal-body">
               <p>{exceptionModal.message}</p>
